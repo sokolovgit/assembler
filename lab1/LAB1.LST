@@ -1,0 +1,69 @@
+Turbo Assembler	 Version 4.0	    02/21/25 10:13:10	    Page 1
+lab1.ASM
+
+
+
+      1	0000			     STSEG SEGMENT PARA	STACK "STACK"
+      2	0000  40*(53 54	41 43 4B)    DB	64 DUP ("STACK")
+      3	0140			     STSEG ENDS
+      4
+      5	0000			     DSEG SEGMENT PARA PUBLIC "DATA"
+      6	0000  0A 14 1E 28	     SOURCE DB 10, 20, 30, 40
+      7	0004  04*(3F)		     DEST DB 4 DUP ("?")
+      8	0008			     DSEG ENDS
+      9
+     10	0000			     CSEG SEGMENT PARA PUBLIC "CODE"
+     11	0000			     MAIN PROC FAR
+     12				     ASSUME CS:	CSEG, DS: DSEG,	SS: STSEG
+     13
+     14	0000  1E		     push DS
+     15	0001  33 C0		     xor AX, AX
+     16	0003  50		     push AX
+     17
+     18	0004  B8 0000s		     mov AX, DSEG
+     19	0007  8E D8		     mov DS, AX
+     20
+     21	0009  C6 06 0004r 00	     mov DEST,0
+     22	000E  C6 06 0005r 00	     mov DEST+1, 0
+     23	0013  C6 06 0006r 00	     mov DEST+2, 0
+     24	0018  C6 06 0007r 00	     mov DEST+3, 0
+     25
+     26	001D  A0 0000r		     mov AL, SOURCE
+     27	0020  A2 0007r		     mov DEST+3, AL
+     28	0023  A0 0001r		     mov AL, SOURCE+1
+     29	0026  A2 0006r		     mov DEST+2, AL
+     30	0029  A0 0002r		     mov AL, SOURCE+2
+     31	002C  A2 0005r		     mov DEST+1, AL
+     32	002F  A0 0003r		     mov AL, SOURCE+3
+     33	0032  A2 0004r		     mov DEST, AL
+     34
+     35	0035  CB		     ret
+     36	0036			     MAIN ENDP
+     37	0036			     CSEG ENDS
+     38				     END MAIN
+Turbo Assembler	 Version 4.0	    02/21/25 10:13:10	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/21/25"
+??FILENAME			  Text	 "lab1	  "
+??TIME				  Text	 "10:13:10"
+??VERSION			  Number 0400
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CSEG
+@FILENAME			  Text	 LAB1
+@WORDSIZE			  Text	 2
+DEST				  Byte	 DSEG:0004
+MAIN				  Far	 CSEG:0000
+SOURCE				  Byte	 DSEG:0000
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CSEG				  16  0036 Para	  Public  CODE
+DSEG				  16  0008 Para	  Public  DATA
+STSEG				  16  0140 Para	  Stack	  STACK
+
