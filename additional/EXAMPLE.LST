@@ -1,0 +1,73 @@
+Turbo Assembler	 Version 4.0	    02/24/25 20:10:15	    Page 1
+example.asm
+
+
+
+      1	0000			     .MODEL SMALL
+      2	0000			     .STACK 100H
+      3	0000			     .DATA
+      4	0000			     .CODE
+      5	0000			     MAIN PROC
+      6	0000  B8 0000s			 MOV AX, @DATA
+      7	0003  8E D8			 MOV DS, AX	     ; Initialize data segment
+      8
+      9					 ; Push	parameters onto	the stack (simulating function call)
+     10	0005  B8 1111			 MOV AX, 1111H	     ; First parameter
+     11	0008  50			 PUSH AX
+     12	0009  B8 2222			 MOV AX, 2222H	     ; Second parameter
+     13	000C  50			 PUSH AX
+     14
+     15	000D  E8 0008			 CALL MyFunction     ; Call the	function
+     16
+     17	0010  83 C4 04			 ADD SP, 4	     ; Remove parameters from stack after the call
+     18
+     19	0013  B8 4C00			 MOV AX, 4C00H	     ; End program
+     20	0016  CD 21			 INT 21H
+     21	0018			     MAIN ENDP
+     22
+     23	0018			     MyFunction	PROC
+     24	0018  55			 PUSH BP	     ; Save previous BP
+     25	0019  8B EC			 MOV BP, SP	     ; BP now points to	the current top	of the stack
+     26
+     27	001B  8B 46 04			 MOV AX, [BP+4]	     ; Get the first parameter (1111H)
+     28	001E  8B 5E 06			 MOV BX, [BP+6]	     ; Get the second parameter	(2222H)
+     29
+     30	0021  5D			 POP BP		     ; Restore BP
+     31	0022  C3			 RET
+     32	0023			     MyFunction	ENDP
+     33
+     34				     END MAIN
+Turbo Assembler	 Version 4.0	    02/24/25 20:10:15	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/24/25"
+??FILENAME			  Text	 "example "
+??TIME				  Text	 "20:10:15"
+??VERSION			  Number 0400
+@32BIT				  Text	 0
+@CODE				  Text	 _TEXT
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 EXAMPLE
+@INTERFACE			  Text	 00H
+@MODEL				  Text	 2
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+MAIN				  Near	 _TEXT:0000
+MYFUNCTION			  Near	 _TEXT:0018
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  STACK				  16  0100 Para	  Stack	  STACK
+  _DATA				  16  0000 Word	  Public  DATA
+_TEXT				  16  0023 Word	  Public  CODE
+
