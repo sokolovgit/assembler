@@ -1,0 +1,339 @@
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 1
+lab2.asm
+
+
+
+      1	0000			     STACKSEGMENT SEGMENT PARA STACK "STACK"
+      2	0000  40*(??)				      DB 64 DUP(?)
+      3	0040			     STACKSEGMENT ENDS
+      4
+      5	0000			     DATASEGMENT SEGMENT PARA PUBLIC "DATA"
+      6	0000  54 68 69 73 20 70	72+	 GREETING_MSG	 DB 'This program subtracts 96 from your number. $'
+      7	      6F 67 72 61 6D 20	73+
+      8	      75 62 74 72 61 63	74+
+      9	      73 20 39 36 20 66	72+
+     10	      6F 6D 20 79 6F 75	72+
+     11	      20 6E 75 6D 62 65	72+
+     12	      2E 20 24
+     13	002D  0D 0A 45 6E 74 65	72+	 RULES_MSG	 DB 13,	10, 'Enter a number in range [-10922, 10922] $'
+     14	      20 61 20 6E 75 6D	62+
+     15	      65 72 20 69 6E 20	72+
+     16	      61 6E 67 65 20 5B	2D+
+     17	      31 30 39 32 32 2C	20+
+     18	      31 30 39 32 32 5D	20+
+     19	      24
+     20	0058  0D 0A 59 6F 75 72	20+	 INPUT_MSG	 DB 13,	10, 'Your number: $'
+     21	      6E 75 6D 62 65 72	3A+
+     22	      20 24
+     23	0068  0D 0A 52 65 73 75	6C+	 RESULT_MSG	 DB 13,	10, 'Result: $'
+     24	      74 3A 20 24
+     25	0073  0D 0A 45 72 72 6F	72+	 ERR_EMPTY_MSG	 DB 13,	10, 'Error: No input provided! $'
+     26	      3A 20 4E 6F 20 69	6E+
+     27	      70 75 74 20 70 72	6F+
+     28	      76 69 64 65 64 21	20+
+     29	      24
+     30	0090  0D 0A 45 72 72 6F	72+	 ERR_RANGE_MSG	 DB 13,	10, 'Error: Number out of range! $'
+     31	      3A 20 4E 75 6D 62	65+
+     32	      72 20 6F 75 74 20	6F+
+     33	      66 20 72 61 6E 67	65+
+     34	      21 20 24
+     35	00AF  0D 0A 45 72 72 6F	72+	 ERR_INVALID_MSG DB 13,	10, 'Error: Invalid input! $'
+     36	      3A 20 49 6E 76 61	6C+
+     37	      69 64 20 69 6E 70	75+
+     38	      74 21 20 24
+     39	00C8  0D 0A 44 6F 20 79	6F+	 EXIT_MSG	 DB 13,	10, 'Do	you want to exit? (y/*ANY*): $'
+     40	      75 20 77 61 6E 74	20+
+     41	      74 6F 20 65 78 69	74+
+     42	      3F 20 28 79 2F 2A	41+
+     43	      4E 59 2A 29 3A 20	24
+     44
+     45	00EB  00			 IS_VALID	 DB 0
+     46	00EC  00			 IS_NEGATIVE	 DB 0
+     47	00ED  07 ?? 07*(??)		 USER_INPUT	 DB 7, ?, 7 DUP(?)
+     48	00F6  0000			 INT_NUM	 DW 0
+     49	00F8			     DATASEGMENT ENDS
+     50
+     51	0000			     CODESEGMENT SEGMENT PARA "CODE"
+     52	0000			     MAIN PROC FAR
+     53							   ASSUME CS:CODESEGMENT, DS:DATASEGMENT, SS:STACKSEGMENT
+     54
+     55	0000  1E					   PUSH	  DS
+     56	0001  B8 0000s					   MOV	  AX, DATASEGMENT
+     57	0004  8E D8					   MOV	  DS, AX
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 2
+lab2.asm
+
+
+
+     58
+     59	0006  E8 0045					   CALL	  PrintGreeting
+     60
+     61	0009			     program_loop:
+     62	0009  E8 0027					   CALL	  ResetState
+     63	000C  E8 004E					   CALL	  AskForInput
+     64	000F  E8 0053					   CALL	  ReadUserNumber
+     65	0012  E8 0058					   CALL	  ValidateUserInput
+     66	0015  80 3E 00EBr 01				   CMP	  BYTE PTR [IS_VALID], 1
+     67	001A  74 ED					   JE	  program_loop
+     68	001C  E8 00DE					   CALL	  SubtractNumber
+     69	001F  E8 00E5					   CALL	  PrintResult
+     70
+     71	0022  E8 0115					   CALL	  AskForExit
+     72	0025  80 3E 00EDr 79				   CMP	  BYTE PTR [USER_INPUT], 'y'
+     73	002A  74 02					   JE	  ExitProgram
+     74	002C  EB DB					   JMP	  program_loop
+     75
+     76	002E			     ExitProgram:
+     77	002E  B8 4C00					   MOV	  AX, 4C00h
+     78	0031  CD 21					   INT	  21h
+     79	0033			     MAIN ENDP
+     80
+     81	0033			     ResetState	PROC NEAR
+     82	0033  C6 06 00EBr 00				   MOV	  BYTE PTR [IS_VALID], 0
+     83	0038  C6 06 00ECr 00				   MOV	  BYTE PTR [IS_NEGATIVE], 0
+     84	003D  C7 06 00F6r 0000				   MOV	  WORD PTR [INT_NUM], 0
+     85	0043  C6 06 00EDr 07				   MOV	  BYTE PTR [USER_INPUT], 7
+     86	0048  C6 06 00EEr 00				   MOV	  BYTE PTR [USER_INPUT + 1], 0
+     87	004D  C3					   RET
+     88	004E			     ResetState	ENDP
+     89
+     90	004E			     PrintGreeting PROC	NEAR
+     91	004E  BA 0000r					   MOV	  DX, OFFSET GREETING_MSG
+     92	0051  B4 09					   MOV	  AH, 09h
+     93	0053  CD 21					   INT	  21h
+     94	0055  BA 002Dr					   MOV	  DX, OFFSET RULES_MSG
+     95	0058  B4 09					   MOV	  AH, 09h
+     96	005A  CD 21					   INT	  21h
+     97	005C  C3					   RET
+     98	005D			     PrintGreeting ENDP
+     99
+    100	005D			     AskForInput PROC NEAR
+    101	005D  BA 0058r					   MOV	  DX, OFFSET INPUT_MSG
+    102	0060  B4 09					   MOV	  AH, 09h
+    103	0062  CD 21					   INT	  21h
+    104	0064  C3					   RET
+    105	0065			     AskForInput ENDP
+    106
+    107	0065			     ReadUserNumber PROC NEAR
+    108	0065  BA 00EDr					   MOV	  DX, OFFSET USER_INPUT
+    109	0068  B4 0A					   MOV	  AH, 0Ah
+    110	006A  CD 21					   INT	  21h
+    111	006C  C3					   RET
+    112	006D			     ReadUserNumber ENDP
+    113
+    114	006D			     ValidateUserInput PROC NEAR
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 3
+lab2.asm
+
+
+
+    115	006D  33 C0					   XOR	  AX, AX
+    116	006F  33 D2					   XOR	  DX, DX
+    117	0071  BE 00EFr					   MOV	  SI, OFFSET USER_INPUT	+ 2
+    118	0074  8A 0E 00EEr				   MOV	  CL, [USER_INPUT + 1]
+    119	0078  0A C9					   OR	  CL, CL
+    120	007A  74 70					   JZ	  error_empty
+    121
+    122	007C  8A 1C					   MOV	  BL, [SI]
+    123	007E  80 FB 71					   CMP	  BL, 'q'
+    124	0081  74 AB					   JE	  ExitProgram
+    125	0083  80 FB 2D					   CMP	  BL, '-'
+    126	0086  75 09					   JNE	  check_digit
+    127	0088  B2 01					   MOV	  DL, 1
+    128	008A  88 16 00ECr				   MOV	  [IS_NEGATIVE], DL
+    129	008E  46					   INC	  SI
+    130	008F  FE C9					   DEC	  CL
+    131
+    132	0091				 check_digit:
+    133	0091  80 F9 00					   CMP	  CL, 0
+    134	0094  74 46					   JZ	  error_invalid
+    135	0096  8A 1C					   MOV	  BL, [SI]
+    136	0098  80 FB 30					   CMP	  BL, '0'
+    137	009B  75 08					   JNE	  convert_loop
+    138	009D  80 F9 01					   CMP	  CL, 1
+    139	00A0  74 03					   JE	  convert_loop
+    140	00A2  EB 38 90					   JMP	  error_invalid
+    141
+    142	00A5				 convert_loop:
+    143	00A5  8A 1C					   MOV	  BL, [SI]
+    144	00A7  80 FB 30					   CMP	  BL, '0'
+    145	00AA  7C 30					   JL	  error_invalid
+    146	00AC  80 FB 39					   CMP	  BL, '9'
+    147	00AF  7F 2B					   JG	  error_invalid
+    148
+    149	00B1  80 EB 30					   SUB	  BL, '0'
+    150	00B4  B7 00					   MOV	  BH, 0
+    151
+    152	00B6  51					   PUSH	  CX
+    153	00B7  B9 000A					   MOV	  CX, 10
+    154	00BA  F7 E9					   IMUL	  CX
+    155	00BC  70 24					   JO	  overflow
+    156	00BE  03 C3					   ADD	  AX, BX
+    157	00C0  72 20					   JC	  overflow
+    158	00C2  59					   POP	  CX
+    159
+    160	00C3  46					   INC	  SI
+    161	00C4  E2 DF					   LOOP	  convert_loop
+    162
+    163	00C6  3D 2AAA					   CMP	  AX, 10922
+    164	00C9  7F 1B					   JG	  error_out_of_range
+    165
+    166	00CB  A3 00F6r					   MOV	  [INT_NUM], AX
+    167
+    168	00CE  8A 16 00ECr				   MOV	  DL, [IS_NEGATIVE]
+    169	00D2  0A D2					   OR	  DL, DL
+    170	00D4  74 05					   JZ	  end_proc
+    171	00D6  F7 D8					   NEG	  AX
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 4
+lab2.asm
+
+
+
+    172	00D8  A3 00F6r					   MOV	  [INT_NUM], AX
+    173
+    174	00DB				 end_proc:
+    175	00DB  C3					   RET
+    176
+    177	00DC				 error_invalid:
+    178	00DC  BA 00AFr					   MOV	  DX, OFFSET ERR_INVALID_MSG
+    179	00DF  EB 11 90					   JMP	  print_error
+    180
+    181	00E2				 overflow:
+    182	00E2  59					   POP	  CX
+    183	00E3  EB 01 90					   JMP	  error_out_of_range
+    184	00E6				 error_out_of_range:
+    185	00E6  BA 0090r					   MOV	  DX, OFFSET ERR_RANGE_MSG
+    186	00E9  EB 07 90					   JMP	  print_error
+    187
+    188	00EC				 error_empty:
+    189	00EC  BA 0073r					   MOV	  DX, OFFSET ERR_EMPTY_MSG
+    190	00EF  EB 01 90					   JMP	  print_error
+    191
+    192	00F2				 print_error:
+    193	00F2  B3 01					   MOV	  BL, 1
+    194	00F4  88 1E 00EBr				   MOV	  [IS_VALID], BL
+    195	00F8  B4 09					   MOV	  AH, 09h
+    196	00FA  CD 21					   INT	  21h
+    197	00FC  C3					   RET
+    198
+    199	00FD			     ValidateUserInput ENDP
+    200
+    201	00FD			     SubtractNumber PROC NEAR
+    202	00FD  A1 00F6r					   MOV	  AX, [INT_NUM]
+    203	0100  2D 0060					   SUB	  AX, 96
+    204	0103  A3 00F6r					   MOV	  [INT_NUM], AX
+    205	0106  C3					   RET
+    206	0107			     SubtractNumber ENDP
+    207
+    208	0107			     PrintResult PROC NEAR
+    209	0107  BA 0068r					   MOV	  DX, OFFSET RESULT_MSG
+    210	010A  B4 09					   MOV	  AH, 09h
+    211	010C  CD 21					   INT	  21h
+    212
+    213	010E  8B 1E 00F6r				   MOV	  BX, [INT_NUM]
+    214	0112  0B DB					   OR	  BX, BX
+    215	0114  79 08					   JNS	  print_number
+    216
+    217	0116  B2 2D					   MOV	  DL, '-'
+    218	0118  B4 02					   MOV	  AH, 02h
+    219	011A  CD 21					   INT	  21h
+    220	011C  F7 DB					   NEG	  BX
+    221
+    222	011E				 print_number:
+    223	011E  8B C3					   MOV	  AX, BX
+    224	0120  33 C9					   XOR	  CX, CX
+    225	0122  BB 000A					   MOV	  BX, 10
+    226
+    227	0125				 push_digits:
+    228	0125  33 D2					   XOR	  DX, DX
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 5
+lab2.asm
+
+
+
+    229	0127  F7 F3					   DIV	  BX
+    230	0129  80 C2 30					   ADD	  DL, '0'
+    231	012C  52					   PUSH	  DX
+    232	012D  41					   INC	  CX
+    233	012E  85 C0					   TEST	  AX, AX
+    234	0130  75 F3					   JNZ	  push_digits
+    235
+    236	0132				 pop_and_print:
+    237	0132  5A					   POP	  DX
+    238	0133  B4 02					   MOV	  AH, 02h
+    239	0135  CD 21					   INT	  21h
+    240	0137  E2 F9					   LOOP	  pop_and_print
+    241
+    242	0139  C3					   RET
+    243	013A			     PrintResult ENDP
+    244
+    245	013A			     AskForExit	PROC NEAR
+    246	013A  BA 00C8r					   MOV	  DX, OFFSET EXIT_MSG
+    247	013D  B4 09					   MOV	  AH, 09h
+    248	013F  CD 21					   INT	  21h
+    249
+    250	0141  B4 01					   MOV	  AH, 01h
+    251	0143  CD 21					   INT	  21h
+    252	0145  A2 00EDr					   MOV	  [USER_INPUT],	AL
+    253	0148  C3					   RET
+    254	0149			     AskForExit	ENDP
+    255
+    256	0149			     CODESEGMENT ENDS
+    257				     END MAIN
+Turbo Assembler	 Version 4.0	    03/06/25 24:42:46	    Page 6
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "03/06/25"
+??FILENAME			  Text	 "lab2	  "
+??TIME				  Text	 "24:42:46"
+??VERSION			  Number 0400
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODESEGMENT
+@FILENAME			  Text	 LAB2
+@WORDSIZE			  Text	 2
+ASKFOREXIT			  Near	 CODESEGMENT:013A
+ASKFORINPUT			  Near	 CODESEGMENT:005D
+CHECK_DIGIT			  Near	 CODESEGMENT:0091
+CONVERT_LOOP			  Near	 CODESEGMENT:00A5
+END_PROC			  Near	 CODESEGMENT:00DB
+ERROR_EMPTY			  Near	 CODESEGMENT:00EC
+ERROR_INVALID			  Near	 CODESEGMENT:00DC
+ERROR_OUT_OF_RANGE		  Near	 CODESEGMENT:00E6
+ERR_EMPTY_MSG			  Byte	 DATASEGMENT:0073
+ERR_INVALID_MSG			  Byte	 DATASEGMENT:00AF
+ERR_RANGE_MSG			  Byte	 DATASEGMENT:0090
+EXITPROGRAM			  Near	 CODESEGMENT:002E
+EXIT_MSG			  Byte	 DATASEGMENT:00C8
+GREETING_MSG			  Byte	 DATASEGMENT:0000
+INPUT_MSG			  Byte	 DATASEGMENT:0058
+INT_NUM				  Word	 DATASEGMENT:00F6
+IS_NEGATIVE			  Byte	 DATASEGMENT:00EC
+IS_VALID			  Byte	 DATASEGMENT:00EB
+MAIN				  Far	 CODESEGMENT:0000
+OVERFLOW			  Near	 CODESEGMENT:00E2
+POP_AND_PRINT			  Near	 CODESEGMENT:0132
+PRINTGREETING			  Near	 CODESEGMENT:004E
+PRINTRESULT			  Near	 CODESEGMENT:0107
+PRINT_ERROR			  Near	 CODESEGMENT:00F2
+PRINT_NUMBER			  Near	 CODESEGMENT:011E
+PROGRAM_LOOP			  Near	 CODESEGMENT:0009
+PUSH_DIGITS			  Near	 CODESEGMENT:0125
+READUSERNUMBER			  Near	 CODESEGMENT:0065
+RESETSTATE			  Near	 CODESEGMENT:0033
+RESULT_MSG			  Byte	 DATASEGMENT:0068
+RULES_MSG			  Byte	 DATASEGMENT:002D
+SUBTRACTNUMBER			  Near	 CODESEGMENT:00FD
+USER_INPUT			  Byte	 DATASEGMENT:00ED
+VALIDATEUSERINPUT		  Near	 CODESEGMENT:006D
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODESEGMENT			  16  0149 Para	  none	  CODE
+DATASEGMENT			  16  00F8 Para	  Public  DATA
+STACKSEGMENT			  16  0040 Para	  Stack	  STACK
+
