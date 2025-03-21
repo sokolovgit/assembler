@@ -1,0 +1,15 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 0003FH 00040H STACKSEGMENT       STACK
+ 00040H 00137H 000F8H DATASEGMENT        DATA
+ 00140H 0028DH 0014EH CODESEGMENT        CODE
+
+  Address         Publics by Name
+
+
+  Address         Publics by Value
+
+
+Program entry point at 0014:0000
+
