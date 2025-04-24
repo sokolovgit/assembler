@@ -1,360 +1,376 @@
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 1
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 1
 lab3.asm
 
 
 
       1				     ; STACK SEGMENT DESCRIPTION
-      2	0000			     STSEG SEGMENT PARA	STACK "STACK"
+      2	0000			     STACK_SEG SEGMENT PARA STACK "STACK"
       3	0000  40*(53 54	41 43 4B)	 DB 64 DUP ("STACK")
-      4	0140			     STSEG ENDS
+      4	0140			     STACK_SEG ENDS
       5
       6				     ; DATA SEGMENT DESCRIPTION
-      7	0000			     DSEG SEGMENT PARA PUBLIC "DATA"
-      8	0000  0000			 result	DW 0
-      9	0002  0000			 tempResult DW 0
-     10	0004  0000			 inputValue DW 0
-     11	0006  0000			 remainder DW 0
-     12	0008  0000			 printValue DW 0
+      7	0000			     DATA_SEG SEGMENT PARA PUBLIC "DATA"
+      8	0000  0000			 result	dw 0
+      9	0002  0000			 temp_result dw	0
+     10	0004  0000			 user_input dw 0
+     11	0006  0000			 division_remainder dw 0
+     12	0008  0000			 display_value dw 0
      13
-     14	000A  0D 0A 50 72 6F 76	69+	 inputMsg DB 0DH, 0AH, 'Provide	X for equation', 0Dh, 0Ah, ' / x + 3, x<=0', 0Dh, 0Ah, '|   +
-     15	      64 65 20 58 20 66	6F+  4x^2 / (x + 1), 0<x<2', 0Dh, 0Ah, '| (x^2 - 1) / (2x + 5),	2<=x<=4', 0Dh, 0Ah, '\ (x^3 - 1) /  +
-     16	      72 20 65 71 75 61	74+  (x^2 + 1),	x>4', 0Dh, 0Ah,	'x: $'
-     17	      69 6F 6E 0D 0A 20	2F+
-     18	      20 78 20 2B 20 33	2C+
-     19	      20 78 3C 3D 30 0D	0A+
-     20	      7C 20 34 78 5E 32	20+
-     21	      2F 20 28 78 20 2B	20+
-     22	      31 29 2C 20 30 3C	78+
-     23	      3C 32 0D 0A 7C 20	28+
-     24	      78 5E 32 20 2D 20	31+
-     25	      29 20 2F 20 28 32	78+
-     26	      20 2B 20 35 29 2C	20+
-     27	      32 3C 3D 78 3C 3D	34+
-     28	      0D 0A 5C 20 28 78	5E+
-     29	      33 20 2D 20 31 29	20+
-     30	      2F 20 28 78 5E 32	20+
-     31	      2B 20 31 29 2C 20	78+
-     32	      3E 34 0D 0A 78 3A	20+
-     33	      24
-     34	0090  07 ?? 07*(00)		 input DB 7, ?,	7 DUP (0)
-     35	0099  0D 0A 52 65 73 75	6C+	 outputMsg DB 0DH, 0AH,	"Result: $"
-     36	      74 3A 20 24
-     37	00A4  0D 0A 52 65 6D 61	69+	 outputMsgRemainder DB 0DH, 0AH, "Remainder: $"
-     38	      6E 64 65 72 3A 20	24
-     39	00B2  0D 0A 45 78 69 74	3F+	 continueMsg DB	0DH, 0AH, "Exit? ( + / - ): $"
-     40	      20 28 20 2B 20 2F	20+
-     41	      2D 20 29 3A 20 24
+     14	000A  0D 0A 45 6E 74 65	72+	 prompt_msg DB 0DH, 0AH, 'Enter	value for X in equation:', 0Dh,	0Ah, '/	x+3, x<=0', 0Dh,    +
+     15	      20 76 61 6C 75 65	20+  0Ah, '| 4x^2/(x+1), 0<x<2', 0Dh, 0Ah, '| (x^2-1)/(2x+5), 2<=x<=4',	0Dh, 0Ah, '\ (x^3-1)/(x^2   +
+     16	      66 6F 72 20 58 20	69+  +1), x>4',	0Dh, 0Ah, 'X: $'
+     17	      6E 20 65 71 75 61	74+
+     18	      69 6F 6E 3A 0D 0A	2F+
+     19	      20 78 2B 33 2C 20	78+
+     20	      3C 3D 30 0D 0A 7C	20+
+     21	      34 78 5E 32 2F 28	78+
+     22	      2B 31 29 2C 20 30	3C+
+     23	      78 3C 32 0D 0A 7C	20+
+     24	      28 78 5E 32 2D 31	29+
+     25	      2F 28 32 78 2B 35	29+
+     26	      2C 20 32 3C 3D 78	3C+
+     27	      3D 34 0D 0A 5C 20	28+
+     28	      78 5E 33 2D 31 29	2F+
+     29	      28 78 5E 32 2B 31	29+
+     30	      2C 20 78 3E 34 0D	0A+
+     31	      58 3A 20 24
+     32	0085  07 ?? 07*(00)		 input_buffer DB 7, ?, 7 dup (0)
+     33	008E  0D 0A 4F 75 74 70	75+	 result_msg DB 0DH, 0AH, "Output: $"
+     34	      74 3A 20 24
+     35	0099  0D 0A 44 69 76 69	73+	 remainder_msg DB 0DH, 0AH, "Division remainder: $"
+     36	      69 6F 6E 20 72 65	6D+
+     37	      61 69 6E 64 65 72	3A+
+     38	      20 24
+     39	00B0  0D 0A 51 75 69 74	3F+	 exit_prompt DB	0DH, 0AH, "Quit? (y/n):	$"
+     40	      20 28 79 2F 6E 29	3A+
+     41	      20 24
      42
-     43	00C6  0D 0A 21 45 72 72	6F+	 errorEmptyMsg DB 0DH, 0AH, "!Error, empty input!$"
-     44	      72 2C 20 65 6D 70	74+
-     45	      79 20 69 6E 70 75	74+
-     46	      21 24
-     47	00DD  0D 0A 21 45 72 72	6F+	 nonNumErrorMsg	DB 0DH,	0AH, "!Error, non-numeric characters!$"
-     48	      72 2C 20 6E 6F 6E	2D+
-     49	      6E 75 6D 65 72 69	63+
-     50	      20 63 68 61 72 61	63+
-     51	      74 65 72 73 21 24
-     52	00FF  0D 0A 21 45 72 72	6F+	 overflowMsg DB	0DH, 0AH, "!Error, reached overflow while reading value!$"
-     53	      72 2C 20 72 65 61	63+
-     54	      68 65 64 20 6F 76	65+
-     55	      72 66 6C 6F 77 20	77+
-     56	      68 69 6C 65 20 72	65+
-     57	      61 64 69 6E 67 20	76+
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 2
+     43	00C0  0D 0A 21 45 72 72	6F+	 error_empty_msg DB 0DH, 0AH, "!Error: Input is	empty!$"
+     44	      72 3A 20 49 6E 70	75+
+     45	      74 20 69 73 20 65	6D+
+     46	      70 74 79 21 24
+     47	00DA  0D 0A 21 45 72 72	6F+	 error_non_numeric_msg DB 0DH, 0AH, "!Error: Invalid characters	detected!$"
+     48	      72 3A 20 49 6E 76	61+
+     49	      6C 69 64 20 63 68	61+
+     50	      72 61 63 74 65 72	73+
+     51	      20 64 65 74 65 63	74+
+     52	      65 64 21 24
+     53	0101  0D 0A 21 45 72 72	6F+	 error_overflow_msg DB 0DH, 0AH, "!Error: Input	value too large!$"
+     54	      72 3A 20 49 6E 70	75+
+     55	      74 20 76 61 6C 75	65+
+     56	      20 74 6F 6F 20 6C	61+
+     57	      72 67 65 21 24
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 2
 lab3.asm
 
 
 
-     58	      61 6C 75 65 21 24
-     59	012F  0D 0A 21 45 72 72	6F+	 calcOverflowMsg DB 0DH, 0AH, "!Error, reached overflow	while calculating result!$"
-     60	      72 2C 20 72 65 61	63+
-     61	      68 65 64 20 6F 76	65+
-     62	      72 66 6C 6F 77 20	77+
-     63	      68 69 6C 65 20 63	61+
-     64	      6C 63 75 6C 61 74	69+
-     65	      6E 67 20 72 65 73	75+
-     66	      6C 74 21 24
+     58	0122  0D 0A 21 45 72 72	6F+	 error_calc_overflow_msg DB 0DH, 0AH, "!Error: Calculation overflow occurred!$"
+     59	      72 3A 20 43 61 6C	63+
+     60	      75 6C 61 74 69 6F	6E+
+     61	      20 6F 76 65 72 66	6C+
+     62	      6F 77 20 6F 63 63	75+
+     63	      72 72 65 64 21 24
+     64	014B  00			 is_negative DB	0
+     65	014C  00			 valid_input DB	0
+     66	014D  00			 error_state DB	0
      67
-     68	0164  00			 isValueNegative DB 0
-     69	0165  00			 validInput DB 0
-     70	0166  00			 errorFlag DB 0
-     71	0167			     DSEG ENDS
-     72
-     73				     ; CODE SEGMENT DESCRIPTION
-     74	0000			     CSEG SEGMENT PARA PUBLIC "CODE"
-     75	0000			     MAIN PROC FAR
-     76					 ASSUME	CS: CSEG, DS: DSEG, SS:	STSEG
-     77	0000  1E			 PUSH DS
-     78	0001  33 C0			 XOR AX, AX
-     79	0003  50			 PUSH AX
-     80	0004  B8 0000s			 MOV AX, DSEG
-     81	0007  8E D8			 MOV DS, AX
+     68	014E			     DATA_SEG ENDS
+     69
+     70				     ; CODE SEGMENT DESCRIPTION
+     71	0000			     CODE_SEG SEGMENT PARA PUBLIC "CODE"
+     72	0000			     PROGRAM_START PROC	FAR
+     73					 ASSUME	CS:CODE_SEG, DS:DATA_SEG, SS:STACK_SEG
+     74	0000  1E			 PUSH DS
+     75	0001  33 C0			 XOR AX, AX
+     76	0003  50			 PUSH AX
+     77	0004  B8 0000s			 MOV AX, DATA_SEG
+     78	0007  8E D8			 MOV DS, AX
+     79
+     80	0009			     main_loop:
+     81	0009  E8 004C			 CALL execute_calculation
      82
-     83	0009			     inputLoop:
-     84	0009  E8 004C			 CALL inputProcedure
+     83	000C  80 3E 014Dr 01		 CMP error_state, 1
+     84	0011  74 27			 JE bypass_output
      85
-     86	000C  80 3E 0166r 01		 CMP errorFlag,	1
-     87	0011  74 27			 JE skipOperation
-     88
-     89	0013  BA 0099r			 LEA DX, outputMsg
-     90	0016  B4 09			 MOV AH, 9
-     91	0018  CD 21			 INT 21h
-     92
-     93	001A  A1 0000r			 MOV AX, result
-     94	001D  A3 0008r			 MOV printValue, AX
-     95	0020  E8 017B			 CALL outputProcedure
+     86	0013  BA 008Er			 LEA DX, result_msg
+     87	0016  B4 09			 MOV AH, 9
+     88	0018  CD 21			 INT 21h
+     89
+     90	001A  A1 0000r			 MOV AX, result
+     91	001D  A3 0008r			 MOV display_value, AX
+     92	0020  E8 018F			 CALL display_output
+     93
+     94	0023  83 3E 0006r 00		 CMP division_remainder, 0
+     95	0028  74 10			 JE bypass_output
      96
-     97	0023  83 3E 0006r 00		 CMP remainder,	0
-     98	0028  74 10			 JE skipOperation
-     99
-    100	002A  BA 00A4r			 LEA DX, outputMsgRemainder
-    101	002D  B4 09			 MOV AH, 9
-    102	002F  CD 21			 INT 21h
-    103
-    104	0031  A1 0006r			 MOV AX, remainder
-    105	0034  A3 0008r			 MOV printValue, AX
-    106	0037  E8 0164			 CALL outputProcedure
+     97	002A  BA 0099r			 LEA DX, remainder_msg
+     98	002D  B4 09			 MOV AH, 9
+     99	002F  CD 21			 INT 21h
+    100
+    101	0031  A1 0006r			 MOV AX, division_remainder
+    102	0034  A3 0008r			 MOV display_value, AX
+    103	0037  E8 0178			 CALL display_output
+    104
+    105	003A			     bypass_output:
+    106	003A  C6 06 014Dr 00		 MOV error_state, 0
     107
-    108	003A			     skipOperation:
-    109	003A  C6 06 0166r 00		 MOV errorFlag,	0
-    110
-    111	003F			     askLoop:
-    112	003F  BA 00B2r			 LEA DX, continueMsg
-    113	0042  B4 09			 MOV AH, 9
-    114	0044  CD 21			 INT 21h
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 3
+    108	003F			     prompt_exit:
+    109	003F  BA 00B0r			 LEA DX, exit_prompt
+    110	0042  B4 09			 MOV AH, 9
+    111	0044  CD 21			 INT 21h
+    112
+    113	0046  B4 01			 MOV AH, 1
+    114	0048  CD 21			 INT 21h
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 3
 lab3.asm
 
 
 
     115
-    116	0046  B4 01			 MOV AH, 1
-    117	0048  CD 21			 INT 21h
-    118
-    119	004A  3C 2D			 CMP AL, '-'
-    120	004C  74 BB			 JE inputLoop
-    121	004E  3C 2B			 CMP AL, '+'
-    122	0050  74 02			 JE exitProgram
-    123	0052  EB EB			 JMP askLoop
-    124
-    125	0054			     exitProgram:
-    126	0054  B4 4C			 MOV AH, 4Ch
-    127	0056  CD 21			 INT 21h
-    128
-    129	0058			     MAIN ENDP
-    130
-    131	0058			     inputProcedure PROC
-    132	0058  BA 000Ar			 LEA DX, inputMsg
-    133	005B  B4 09			 MOV AH, 9
-    134	005D  CD 21			 INT 21h
-    135
-    136	005F  BA 0090r			 LEA DX, input
-    137	0062  B4 0A			 MOV AH, 10
-    138	0064  CD 21			 INT 21h
-    139
-    140	0066  BE 0092r			 LEA SI, input + 2
-    141	0069  33 DB			 XOR BX, BX
-    142	006B  8A 1C			 MOV BL, [SI]
-    143
-    144	006D  80 FB 2D			 CMP BL, '-'
-    145	0070  74 18			 JE readNegative
-    146	0072  80 FB 2B			 CMP BL, '+'
-    147	0075  74 08			 JE readPositive
+    116	004A  3C 6E			 CMP AL, 'n'
+    117	004C  74 BB			 JE main_loop
+    118	004E  3C 79			 CMP AL, 'y'
+    119	0050  74 02			 JE terminate
+    120	0052  EB EB			 JMP prompt_exit
+    121
+    122	0054			     terminate:
+    123	0054  B4 4C			 MOV AH, 4Ch
+    124	0056  CD 21			 INT 21h
+    125
+    126	0058			     PROGRAM_START ENDP
+    127
+    128	0058			     execute_calculation PROC
+    129	0058  BA 000Ar			 LEA DX, prompt_msg
+    130	005B  B4 09			 MOV AH, 9
+    131	005D  CD 21			 INT 21h
+    132
+    133	005F  BA 0085r			 LEA DX, input_buffer
+    134	0062  B4 0A			 MOV AH, 10
+    135	0064  CD 21			 INT 21h
+    136
+    137	0066  BE 0087r			 LEA SI, input_buffer +	2
+    138	0069  33 DB			 XOR BX, BX
+    139	006B  8A 1C			 MOV BL, byte ptr [SI]
+    140
+    141	006D  80 FB 2D			 CMP BL, '-'
+    142	0070  74 18			 JE parse_negative
+    143	0072  80 FB 2B			 CMP BL, '+'
+    144	0075  74 08			 JE parse_positive
+    145
+    146	0077  C6 06 014Br 00		 MOV is_negative, 0
+    147	007C  EB 17 90			 JMP parse_number
     148
-    149	0077  C6 06 0164r 00		 MOV isValueNegative, 0
-    150	007C  EB 17 90			 JMP readInteger
-    151
-    152	007F			     readPositive:
-    153	007F  C6 06 0164r 00		 MOV isValueNegative, 0
-    154	0084  46			 INC SI
-    155	0085  8A 1C			 MOV BL, [SI]
-    156	0087  EB 0C 90			 JMP readInteger
-    157
-    158	008A			     readNegative:
-    159	008A  C6 06 0164r 01		 MOV isValueNegative, 1
-    160	008F  46			 INC SI
-    161	0090  8A 1C			 MOV BL, [SI]
-    162	0092  EB 01 90			 JMP readInteger
-    163
-    164	0095			     readInteger:
-    165	0095  C6 06 0165r 00		 MOV validInput, 0
-    166	009A  B9 000A			 MOV CX, 10
-    167	009D  33 C0			 XOR AX, AX
-    168
-    169	009F			     loopRead:
-    170	009F  80 FB 0D			 CMP BL, 0Dh
-    171	00A2  74 21			 JE endOfLineReached
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 4
+    149	007F			     parse_positive:
+    150	007F  C6 06 014Br 00		 MOV is_negative, 0
+    151	0084  46			 INC SI
+    152	0085  8A 1C			 MOV BL, byte ptr [SI]
+    153	0087  EB 0C 90			 JMP parse_number
+    154
+    155	008A			     parse_negative:
+    156	008A  C6 06 014Br 01		 MOV is_negative, 1
+    157	008F  46			 INC SI
+    158	0090  8A 1C			 MOV BL, byte ptr [SI]
+    159	0092  EB 01 90			 JMP parse_number
+    160
+    161	0095			     parse_number:
+    162	0095  C6 06 014Cr 00		 MOV valid_input, 0
+    163	009A  B9 000A			 MOV CX, 10
+    164	009D  33 C0			 XOR AX, AX
+    165
+    166	009F			     number_loop:
+    167	009F  80 FB 0D			 CMP BL, 0Dh
+    168	00A2  74 21			 JE input_complete
+    169
+    170	00A4  80 FB 30			 CMP BL, 30h
+    171	00A7  72 26			 JB invalid_char
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 4
 lab3.asm
 
 
 
-    172
-    173	00A4  80 FB 30			 CMP BL, '0'
-    174	00A7  72 26			 JB charError
-    175	00A9  80 FB 39			 CMP BL, '9'
-    176	00AC  77 21			 JA charError
-    177
-    178	00AE  C6 06 0165r 01		 MOV validInput, 1
-    179	00B3  32 FF			 XOR BH, BH
-    180	00B5  F7 E9			 IMUL CX
-    181	00B7  70 34			 JO overflowError
-    182	00B9  80 EB 30			 SUB BL, '0'
-    183	00BC  03 C3			 ADD AX, BX
-    184	00BE  70 2D			 JO overflowError
-    185
-    186	00C0  46			 INC SI
-    187	00C1  8A 1C			 MOV BL, [SI]
-    188	00C3  EB DA			 JMP loopRead
-    189
-    190	00C5			     endOfLineReached:
-    191	00C5  80 3E 0165r 00		 CMP validInput, 0
-    192	00CA  74 12			 JE emptyInputError
-    193	00CC  EB 2E 90			 JMP calculateResult
-    194
-    195	00CF			     charError:
-    196	00CF  BA 00DDr			 LEA DX, nonNumErrorMsg
-    197	00D2  B4 09			 MOV AH, 9
-    198	00D4  CD 21			 INT 21h
-    199	00D6  C6 06 0166r 01		 MOV errorFlag,	1
-    200	00DB  E9 00BB			 JMP endProcedure
-    201
-    202	00DE			     emptyInputError:
-    203	00DE  BA 00C6r			 LEA DX, errorEmptyMsg
-    204	00E1  B4 09			 MOV AH, 9
-    205	00E3  CD 21			 INT 21h
-    206	00E5  C6 06 0166r 01		 MOV errorFlag,	1
-    207	00EA  E9 00AC			 JMP endProcedure
-    208
-    209	00ED			     overflowError:
-    210	00ED  BA 00FFr			 LEA DX, overflowMsg
-    211	00F0  B4 09			 MOV AH, 9
-    212	00F2  CD 21			 INT 21h
-    213	00F4  C6 06 0166r 01		 MOV errorFlag,	1
-    214	00F9  E9 009D			 JMP endProcedure
-    215
-    216	00FC			     calculateResult:
-    217	00FC  A3 0004r			 MOV inputValue, AX
-    218	00FF  33 D2			 XOR DX, DX
-    219
-    220	0101  80 3E 0164r 01		 CMP isValueNegative, 1
-    221	0106  74 12			 JE firstCaseNegative
-    222	0108  3D 0000			 CMP AX, 0
-    223	010B  74 17			 JE firstCaseZero
-    224	010D  3D 0002			 CMP AX, 2
-    225	0110  7C 1A			 JL secondCase
-    226	0112  3D 0004			 CMP AX, 4
-    227	0115  7E 2F			 JLE thirdCase
-    228	0117  EB 4B 90			 JMP fourthCase
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 5
+    172	00A9  80 FB 39			 CMP BL, 39h
+    173	00AC  77 21			 JA invalid_char
+    174
+    175	00AE  C6 06 014Cr 01		 MOV valid_input, 1
+    176
+    177	00B3  32 FF			 XOR BH, BH
+    178	00B5  F7 E9			 IMUL CX
+    179	00B7  70 34			 JO input_overflow
+    180	00B9  80 EB 30			 SUB BL, '0'
+    181	00BC  03 C3			 ADD AX, BX
+    182	00BE  70 2D			 JO input_overflow
+    183
+    184	00C0  46			 INC SI
+    185	00C1  8A 1C			 MOV BL, byte ptr [SI]
+    186	00C3  EB DA			 JMP number_loop
+    187
+    188	00C5			     input_complete:
+    189	00C5  80 3E 014Cr 00		 CMP valid_input, 0
+    190	00CA  74 12			 JE empty_input
+    191	00CC  EB 2E 90			 JMP evaluate_expression
+    192
+    193	00CF			     invalid_char:
+    194	00CF  BA 00DAr			 LEA DX, error_non_numeric_msg
+    195	00D2  B4 09			 MOV AH, 9
+    196	00D4  CD 21			 INT 21h
+    197	00D6  C6 06 014Dr 01		 MOV error_state, 1
+    198	00DB  E9 00CF			 JMP calc_end
+    199
+    200	00DE			     empty_input:
+    201	00DE  BA 00C0r			 LEA DX, error_empty_msg
+    202	00E1  B4 09			 MOV AH, 9
+    203	00E3  CD 21			 INT 21h
+    204	00E5  C6 06 014Dr 01		 MOV error_state, 1
+    205	00EA  E9 00C0			 JMP calc_end
+    206
+    207	00ED			     input_overflow:
+    208	00ED  BA 0101r			 LEA DX, error_overflow_msg
+    209	00F0  B4 09			 MOV AH, 9
+    210	00F2  CD 21			 INT 21h
+    211	00F4  C6 06 014Dr 01		 MOV error_state, 1
+    212	00F9  E9 00B1			 JMP calc_end
+    213
+    214	00FC			     evaluate_expression:
+    215	00FC  A3 0004r			 MOV user_input, AX
+    216	00FF  33 D2			 XOR DX, DX
+    217	0101  80 3E 014Br 01		 CMP is_negative, 1
+    218	0106  74 12			 JE case_negative
+    219	0108  3D 0000			 CMP AX, 0
+    220	010B  74 17			 JE case_zero
+    221	010D  3D 0002			 CMP AX, 2
+    222	0110  7C 1A			 JL case_second
+    223	0112  3D 0004			 CMP AX, 4
+    224	0115  7E 2F			 JLE case_third
+    225	0117  EB 53 90			 JMP case_fourth
+    226
+    227	011A			     case_negative:
+    228	011A  2D 0003			 SUB AX, 3
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 5
 lab3.asm
 
 
 
-    229
-    230	011A			     firstCaseNegative:
-    231	011A  2D 0003			 SUB AX, 3
-    232	011D  70 64			 JO calcOverflowError
-    233	011F  F7 D8			 NEG AX
-    234	0121  EB 6F 90			 JMP saveResult
-    235
-    236	0124			     firstCaseZero:
-    237	0124  05 0003			 ADD AX, 3
-    238	0127  70 5A			 JO calcOverflowError
-    239	0129  EB 67 90			 JMP saveResult
-    240
-    241	012C			     secondCase:
-    242	012C  A3 0002r			 MOV tempResult, AX
-    243	012F  83 06 0002r 01		 ADD tempResult, 1
-    244	0134  8B C8			 MOV CX, AX
-    245	0136  F7 E1			 MUL CX
-    246	0138  B9 0004			 MOV CX, 4
-    247	013B  F7 E1			 MUL CX
-    248	013D  8B 0E 0002r		 MOV CX, tempResult
-    249	0141  F7 F1			 DIV CX
-    250	0143  EB 4D 90			 JMP saveResult
+    229	011D  70 78			 JO calc_overflow
+    230	011F  F7 D8			 NEG AX
+    231	0121  E9 0082			 JMP store_result
+    232
+    233	0124			     case_zero:
+    234	0124  05 0003			 ADD AX, 3
+    235	0127  70 6E			 JO calc_overflow
+    236	0129  EB 7B 90			 JMP store_result
+    237
+    238	012C			     case_second:
+    239	012C  A3 0002r			 MOV temp_result, AX
+    240	012F  83 06 0002r 01		 ADD temp_result, 1
+    241
+    242	0134  8B C8			 MOV CX, AX
+    243	0136  F7 E1			 MUL CX
+    244	0138  B9 0004			 MOV CX, 4
+    245	013B  F7 E1			 MUL CX
+    246
+    247	013D  8B 0E 0002r		 MOV CX, temp_result
+    248	0141  F7 F1			 DIV CX
+    249
+    250	0143  EB 61 90			 JMP store_result
     251
-    252	0146			     thirdCase:
+    252	0146			     case_third:
     253	0146  B9 0002			 MOV CX, 2
     254	0149  F7 E1			 MUL CX
-    255	014B  05 0005			 ADD AX, 5
-    256	014E  A3 0002r			 MOV tempResult, AX
-    257	0151  A1 0004r			 MOV AX, inputValue
-    258	0154  8B C8			 MOV CX, AX
-    259	0156  F7 E1			 MUL CX
-    260	0158  2D 0001			 SUB AX, 1
-    261	015B  8B 0E 0002r		 MOV CX, tempResult
-    262	015F  F7 F1			 DIV CX
-    263	0161  EB 2F 90			 JMP saveResult
-    264
-    265	0164			     fourthCase:
-    266	0164  8B C8			 MOV CX, AX
-    267	0166  F7 E1			 MUL CX
-    268	0168  05 0001			 ADD AX, 1
-    269	016B  A3 0002r			 MOV tempResult, AX
-    270	016E  A1 0004r			 MOV AX, inputValue
-    271	0171  8B C8			 MOV CX, AX
-    272	0173  F7 E1			 MUL CX
-    273	0175  F7 E1			 MUL CX
-    274	0177  2D 0001			 SUB AX, 1
-    275	017A  8B 0E 0002r		 MOV CX, tempResult
-    276	017E  F7 F1			 DIV CX
-    277	0180  EB 10 90			 JMP saveResult
-    278
-    279	0183			     calcOverflowError:
-    280	0183  BA 012Fr			 LEA DX, calcOverflowMsg
-    281	0186  B4 09			 MOV AH, 9
-    282	0188  CD 21			 INT 21h
-    283	018A  C6 06 0166r 01		 MOV errorFlag,	1
-    284	018F  EB 08 90			 JMP endProcedure
-    285
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 6
+    255	014B  70 4A			 JO calc_overflow
+    256	014D  05 0005			 ADD AX, 5
+    257	0150  70 45			 JO calc_overflow
+    258	0152  A3 0002r			 MOV temp_result, AX
+    259
+    260	0155  A1 0004r			 MOV AX, user_input
+    261	0158  8B C8			 MOV CX, AX
+    262	015A  F7 E1			 MUL CX
+    263	015C  70 39			 JO calc_overflow
+    264	015E  2D 0001			 SUB AX, 1
+    265	0161  70 34			 JO calc_overflow
+    266
+    267	0163  8B 0E 0002r		 MOV CX, temp_result
+    268	0167  F7 F1			 DIV CX
+    269
+    270	0169  EB 3B 90			 JMP store_result
+    271
+    272	016C			     case_fourth:
+    273	016C  8B C8			 MOV CX, AX
+    274	016E  F7 E1			 MUL CX
+    275	0170  70 25			 JO calc_overflow
+    276	0172  05 0001			 ADD AX, 1
+    277	0175  70 20			 JO calc_overflow
+    278	0177  A3 0002r			 MOV temp_result, AX
+    279
+    280	017A  A1 0004r			 MOV AX, user_input
+    281	017D  8B C8			 MOV CX, AX
+    282	017F  F7 E1			 MUL CX
+    283	0181  70 14			 JO calc_overflow
+    284	0183  F7 E1			 MUL CX
+    285	0185  70 10			 JO calc_overflow
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 6
 lab3.asm
 
 
 
-    286	0192			     saveResult:
-    287	0192  89 16 0006r		 MOV remainder,	DX
-    288	0196  A3 0000r			 MOV result, AX
-    289
-    290	0199			     endProcedure:
-    291	0199  33 C0			 XOR AX, AX
-    292	019B  33 D2			 XOR DX, DX
-    293	019D  C3			 RET
-    294	019E			     inputProcedure ENDP
-    295
-    296	019E			     outputProcedure PROC
-    297	019E  8B 1E 0008r		 MOV BX, printValue
-    298	01A2  0B DB			 OR BX,	BX
-    299	01A4  79 06			 JNS positive2
-    300	01A6  B0 2D			 MOV al, '-'
-    301	01A8  CD 29			 INT 29h
-    302	01AA  F7 DB			 NEG bx
-    303
-    304	01AC			     positive2:
-    305	01AC  8B C3			 MOV AX, BX
-    306	01AE  33 C9			 XOR CX, CX
-    307	01B0  BB 000A			 MOV BX, 10
-    308
-    309	01B3			     toString:
-    310	01B3  33 D2			 XOR DX, DX
-    311	01B5  F7 F3			 DIV BX
-    312	01B7  80 C2 30			 ADD DL, '0'
-    313	01BA  52			 PUSH DX
-    314	01BB  41			 INC CX
-    315	01BC  85 C0			 TEST AX, AX
-    316	01BE  75 F3			 JNZ toString
-    317
-    318	01C0			     outputPrint:
-    319	01C0  58			 POP AX
-    320	01C1  CD 29			 INT 29h
-    321	01C3  E2 FB			 LOOP outputPrint
-    322	01C5  C3			 RET
-    323	01C6			     outputProcedure ENDP
+    286	0187  2D 0001			 SUB AX, 1
+    287	018A  70 0B			 JO calc_overflow
+    288
+    289	018C  8B 0E 0002r		 MOV CX, temp_result
+    290	0190  F7 F1			 DIV CX
+    291	0192  70 03			 JO calc_overflow
+    292
+    293	0194  EB 10 90			 JMP store_result
+    294
+    295	0197			     calc_overflow:
+    296	0197  BA 0122r			 LEA DX, error_calc_overflow_msg
+    297	019A  B4 09			 MOV AH, 9
+    298	019C  CD 21			 INT 21h
+    299	019E  C6 06 014Dr 01		 MOV error_state, 1
+    300	01A3  EB 08 90			 JMP calc_end
+    301
+    302	01A6			     store_result:
+    303	01A6  89 16 0006r		 MOV division_remainder, DX
+    304	01AA  A3 0000r			 MOV result, AX
+    305
+    306	01AD			     calc_end:
+    307	01AD  33 C0			 XOR AX, AX
+    308	01AF  33 D2			 XOR DX, DX
+    309	01B1  C3			 RET
+    310	01B2			     execute_calculation ENDP
+    311
+    312	01B2			     display_output PROC
+    313	01B2  8B 1E 0008r		 MOV BX, display_value
+    314	01B6  0B DB			 OR BX,	BX
+    315	01B8  79 06			 JNS positive_num
+    316	01BA  B0 2D			 MOV AL, '-'
+    317	01BC  CD 29			 INT 29h
+    318	01BE  F7 DB			 NEG BX
+    319
+    320	01C0			     positive_num:
+    321	01C0  8B C3			 MOV AX, BX
+    322	01C2  33 C9			 XOR CX, CX
+    323	01C4  BB 000A			 MOV BX, 10
     324
-    325	01C6			     CSEG ENDS
-    326				     END MAIN
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 7
+    325	01C7			     convert_to_string:
+    326	01C7  33 D2			 XOR DX, DX
+    327	01C9  F7 F3			 DIV BX
+    328	01CB  80 C2 30			 ADD DL, '0'
+    329	01CE  52			 PUSH DX
+    330	01CF  41			 INC CX
+    331	01D0  85 C0			 TEST AX, AX
+    332	01D2  75 F3			 JNZ convert_to_string
+    333
+    334	01D4			     print_loop:
+    335	01D4  58			 POP AX
+    336	01D5  CD 29			 INT 29h
+    337	01D7  E2 FB			 LOOP print_loop
+    338	01D9  C3			 RET
+    339	01DA			     display_output ENDP
+    340
+    341	01DA			     CODE_SEG ENDS
+    342				     END PROGRAM_START
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 7
 Symbol Table
 
 
@@ -362,59 +378,59 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "04/03/25"
+??DATE				  Text	 "04/24/25"
 ??FILENAME			  Text	 "lab3	  "
-??TIME				  Text	 "22:29:08"
+??TIME				  Text	 "22:02:35"
 ??VERSION			  Number 0400
 @CPU				  Text	 0101H
-@CURSEG				  Text	 CSEG
+@CURSEG				  Text	 CODE_SEG
 @FILENAME			  Text	 LAB3
 @WORDSIZE			  Text	 2
-ASKLOOP				  Near	 CSEG:003F
-CALCOVERFLOWERROR		  Near	 CSEG:0183
-CALCOVERFLOWMSG			  Byte	 DSEG:012F
-CALCULATERESULT			  Near	 CSEG:00FC
-CHARERROR			  Near	 CSEG:00CF
-CONTINUEMSG			  Byte	 DSEG:00B2
-EMPTYINPUTERROR			  Near	 CSEG:00DE
-ENDOFLINEREACHED		  Near	 CSEG:00C5
-ENDPROCEDURE			  Near	 CSEG:0199
-ERROREMPTYMSG			  Byte	 DSEG:00C6
-ERRORFLAG			  Byte	 DSEG:0166
-EXITPROGRAM			  Near	 CSEG:0054
-FIRSTCASENEGATIVE		  Near	 CSEG:011A
-FIRSTCASEZERO			  Near	 CSEG:0124
-FOURTHCASE			  Near	 CSEG:0164
-INPUT				  Byte	 DSEG:0090
-INPUTLOOP			  Near	 CSEG:0009
-INPUTMSG			  Byte	 DSEG:000A
-INPUTPROCEDURE			  Near	 CSEG:0058
-INPUTVALUE			  Word	 DSEG:0004
-ISVALUENEGATIVE			  Byte	 DSEG:0164
-LOOPREAD			  Near	 CSEG:009F
-MAIN				  Far	 CSEG:0000
-NONNUMERRORMSG			  Byte	 DSEG:00DD
-OUTPUTMSG			  Byte	 DSEG:0099
-OUTPUTMSGREMAINDER		  Byte	 DSEG:00A4
-OUTPUTPRINT			  Near	 CSEG:01C0
-OUTPUTPROCEDURE			  Near	 CSEG:019E
-OVERFLOWERROR			  Near	 CSEG:00ED
-OVERFLOWMSG			  Byte	 DSEG:00FF
-POSITIVE2			  Near	 CSEG:01AC
-PRINTVALUE			  Word	 DSEG:0008
-READINTEGER			  Near	 CSEG:0095
-READNEGATIVE			  Near	 CSEG:008A
-READPOSITIVE			  Near	 CSEG:007F
-REMAINDER			  Word	 DSEG:0006
-RESULT				  Word	 DSEG:0000
-SAVERESULT			  Near	 CSEG:0192
-SECONDCASE			  Near	 CSEG:012C
-SKIPOPERATION			  Near	 CSEG:003A
-TEMPRESULT			  Word	 DSEG:0002
-THIRDCASE			  Near	 CSEG:0146
-TOSTRING			  Near	 CSEG:01B3
-VALIDINPUT			  Byte	 DSEG:0165
-Turbo Assembler	 Version 4.0	    04/03/25 22:29:08	    Page 8
+BYPASS_OUTPUT			  Near	 CODE_SEG:003A
+CALC_END			  Near	 CODE_SEG:01AD
+CALC_OVERFLOW			  Near	 CODE_SEG:0197
+CASE_FOURTH			  Near	 CODE_SEG:016C
+CASE_NEGATIVE			  Near	 CODE_SEG:011A
+CASE_SECOND			  Near	 CODE_SEG:012C
+CASE_THIRD			  Near	 CODE_SEG:0146
+CASE_ZERO			  Near	 CODE_SEG:0124
+CONVERT_TO_STRING		  Near	 CODE_SEG:01C7
+DISPLAY_OUTPUT			  Near	 CODE_SEG:01B2
+DISPLAY_VALUE			  Word	 DATA_SEG:0008
+DIVISION_REMAINDER		  Word	 DATA_SEG:0006
+EMPTY_INPUT			  Near	 CODE_SEG:00DE
+ERROR_CALC_OVERFLOW_MSG		  Byte	 DATA_SEG:0122
+ERROR_EMPTY_MSG			  Byte	 DATA_SEG:00C0
+ERROR_NON_NUMERIC_MSG		  Byte	 DATA_SEG:00DA
+ERROR_OVERFLOW_MSG		  Byte	 DATA_SEG:0101
+ERROR_STATE			  Byte	 DATA_SEG:014D
+EVALUATE_EXPRESSION		  Near	 CODE_SEG:00FC
+EXECUTE_CALCULATION		  Near	 CODE_SEG:0058
+EXIT_PROMPT			  Byte	 DATA_SEG:00B0
+INPUT_BUFFER			  Byte	 DATA_SEG:0085
+INPUT_COMPLETE			  Near	 CODE_SEG:00C5
+INPUT_OVERFLOW			  Near	 CODE_SEG:00ED
+INVALID_CHAR			  Near	 CODE_SEG:00CF
+IS_NEGATIVE			  Byte	 DATA_SEG:014B
+MAIN_LOOP			  Near	 CODE_SEG:0009
+NUMBER_LOOP			  Near	 CODE_SEG:009F
+PARSE_NEGATIVE			  Near	 CODE_SEG:008A
+PARSE_NUMBER			  Near	 CODE_SEG:0095
+PARSE_POSITIVE			  Near	 CODE_SEG:007F
+POSITIVE_NUM			  Near	 CODE_SEG:01C0
+PRINT_LOOP			  Near	 CODE_SEG:01D4
+PROGRAM_START			  Far	 CODE_SEG:0000
+PROMPT_EXIT			  Near	 CODE_SEG:003F
+PROMPT_MSG			  Byte	 DATA_SEG:000A
+REMAINDER_MSG			  Byte	 DATA_SEG:0099
+RESULT				  Word	 DATA_SEG:0000
+RESULT_MSG			  Byte	 DATA_SEG:008E
+STORE_RESULT			  Near	 CODE_SEG:01A6
+TEMP_RESULT			  Word	 DATA_SEG:0002
+TERMINATE			  Near	 CODE_SEG:0054
+USER_INPUT			  Word	 DATA_SEG:0004
+VALID_INPUT			  Byte	 DATA_SEG:014C
+Turbo Assembler	 Version 4.0	    04/24/25 22:02:35	    Page 8
 Symbol Table
 
 
@@ -422,7 +438,7 @@ Symbol Table
 
 Groups & Segments		  Bit Size Align  Combine Class
 
-CSEG				  16  01C6 Para	  Public  CODE
-DSEG				  16  0167 Para	  Public  DATA
-STSEG				  16  0140 Para	  Stack	  STACK
+CODE_SEG			  16  01DA Para	  Public  CODE
+DATA_SEG			  16  014E Para	  Public  DATA
+STACK_SEG			  16  0140 Para	  Stack	  STACK
 

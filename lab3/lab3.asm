@@ -1,280 +1,302 @@
-STSEG SEGMENT PARA STACK "STACK"
+; STACK SEGMENT DESCRIPTION
+STACK_SEG SEGMENT PARA STACK "STACK"
     DB 64 DUP ("STACK")
-STSEG ENDS
+STACK_SEG ENDS
 
-DSEG SEGMENT PARA PUBLIC "DATA"
-    result DW 0
-    tempResult DW 0
-    inputValue DW 0
-    remainder DW 0
-    printValue DW 0
-
-    inputMsg DB 0DH, 0AH, 'Provide X for equation', 0Dh, 0Ah, ' / x + 3, x<=0', 0Dh, 0Ah, '| 4x^2 / (x + 1), 0<x<2', 0Dh, 0Ah, '| (x^2 - 1) / (2x + 5), 2<=x<=4', 0Dh, 0Ah, '\ (x^3 - 1) / (x^2 + 1), x>4', 0Dh, 0Ah, 'x: $'
-    input DB 7, ?, 7 DUP (0)
-    outputMsg DB 0DH, 0AH, "Result: $"
-    outputMsgRemainder DB 0DH, 0AH, "Remainder: $"
-    continueMsg DB 0DH, 0AH, "Exit? ( + / - ): $"
+; DATA SEGMENT DESCRIPTION
+DATA_SEG SEGMENT PARA PUBLIC "DATA"
+    result dw 0
+    temp_result dw 0
+    user_input dw 0
+    division_remainder dw 0
+    display_value dw 0
     
-    errorEmptyMsg DB 0DH, 0AH, "!Error, empty input!$"
-    nonNumErrorMsg DB 0DH, 0AH, "!Error, non-numeric characters!$"
-    overflowMsg DB 0DH, 0AH, "!Error, reached overflow while reading value!$"
-    calcOverflowMsg DB 0DH, 0AH, "!Error, reached overflow while calculating result!$"
+    prompt_msg DB 0DH, 0AH, 'Enter value for X in equation:', 0Dh, 0Ah, '/ x+3, x<=0', 0Dh, 0Ah, '| 4x^2/(x+1), 0<x<2', 0Dh, 0Ah, '| (x^2-1)/(2x+5), 2<=x<=4', 0Dh, 0Ah, '\ (x^3-1)/(x^2+1), x>4', 0Dh, 0Ah, 'X: $'
+    input_buffer DB 7, ?, 7 dup (0)
+    result_msg DB 0DH, 0AH, "Output: $"
+    remainder_msg DB 0DH, 0AH, "Division remainder: $"
+    exit_prompt DB 0DH, 0AH, "Quit? (y/n): $"
     
-    isValueNegative DB 0
-    validInput DB 0
-    errorFlag DB 0
-DSEG ENDS
+    error_empty_msg DB 0DH, 0AH, "!Error: Input is empty!$"
+    error_non_numeric_msg DB 0DH, 0AH, "!Error: Invalid characters detected!$"
+    error_overflow_msg DB 0DH, 0AH, "!Error: Input value too large!$"
+    error_calc_overflow_msg DB 0DH, 0AH, "!Error: Calculation overflow occurred!$"
+    is_negative DB 0
+    valid_input DB 0
+    error_state DB 0
 
-CSEG SEGMENT PARA PUBLIC "CODE"
-MAIN PROC FAR
-    ASSUME CS: CSEG, DS: DSEG, SS: STSEG
+DATA_SEG ENDS
+
+; CODE SEGMENT DESCRIPTION
+CODE_SEG SEGMENT PARA PUBLIC "CODE"
+PROGRAM_START PROC FAR
+    ASSUME CS:CODE_SEG, DS:DATA_SEG, SS:STACK_SEG
     PUSH DS
     XOR AX, AX
     PUSH AX
-    MOV AX, DSEG
+    MOV AX, DATA_SEG
     MOV DS, AX
 
-inputLoop:
-    CALL inputProcedure
-
-    CMP errorFlag, 1
-    JE skipOperation
-
-    LEA DX, outputMsg
+main_loop:
+    CALL execute_calculation
+    
+    CMP error_state, 1
+    JE bypass_output
+    
+    LEA DX, result_msg
     MOV AH, 9
     INT 21h
-
+    
     MOV AX, result
-    MOV printValue, AX
-    CALL outputProcedure
-
-    CMP remainder, 0
-    JE skipOperation
-
-    LEA DX, outputMsgRemainder
+    MOV display_value, AX
+    CALL display_output
+    
+    CMP division_remainder, 0
+    JE bypass_output
+    
+    LEA DX, remainder_msg
     MOV AH, 9
     INT 21h
+    
+    MOV AX, division_remainder
+    MOV display_value, AX
+    CALL display_output
+    
+bypass_output:
+    MOV error_state, 0
 
-    MOV AX, remainder
-    MOV printValue, AX
-    CALL outputProcedure
-
-skipOperation:
-    MOV errorFlag, 0
-
-askLoop:
-    LEA DX, continueMsg
+prompt_exit:
+    LEA DX, exit_prompt
     MOV AH, 9
     INT 21h
-
+    
     MOV AH, 1
     INT 21h
+    
+    CMP AL, 'n'
+    JE main_loop
+    CMP AL, 'y'
+    JE terminate
+    JMP prompt_exit
 
-    CMP AL, '-'
-    JE inputLoop
-    CMP AL, '+'
-    JE exitProgram
-    JMP askLoop
-
-exitProgram:
+terminate:
     MOV AH, 4Ch
     INT 21h
 
-MAIN ENDP
+PROGRAM_START ENDP
 
-inputProcedure PROC
-    LEA DX, inputMsg
+execute_calculation PROC
+    LEA DX, prompt_msg
     MOV AH, 9
     INT 21h
-
-    LEA DX, input
+    
+    LEA DX, input_buffer
     MOV AH, 10
     INT 21h
 
-    LEA SI, input + 2
+    LEA SI, input_buffer + 2
     XOR BX, BX
-    MOV BL, [SI]
-
+    MOV BL, byte ptr [SI]
+    
     CMP BL, '-'
-    JE readNegative
+    JE parse_negative
     CMP BL, '+'
-    JE readPositive
-
-    MOV isValueNegative, 0
-    JMP readInteger
-
-readPositive:
-    MOV isValueNegative, 0
+    JE parse_positive
+    
+    MOV is_negative, 0
+    JMP parse_number
+    
+parse_positive:
+    MOV is_negative, 0
     INC SI
-    MOV BL, [SI]
-    JMP readInteger
-
-readNegative:
-    MOV isValueNegative, 1
+    MOV BL, byte ptr [SI]
+    JMP parse_number
+    
+parse_negative:
+    MOV is_negative, 1
     INC SI
-    MOV BL, [SI]
-    JMP readInteger
+    MOV BL, byte ptr [SI]
+    JMP parse_number
 
-readInteger:
-    MOV validInput, 0
+parse_number:
+    MOV valid_input, 0
     MOV CX, 10
     XOR AX, AX
-
-loopRead:
+    
+number_loop:
     CMP BL, 0Dh
-    JE endOfLineReached
-
-    CMP BL, '0'
-    JB charError
-    CMP BL, '9'
-    JA charError
-
-    MOV validInput, 1
+    JE input_complete
+    
+    CMP BL, 30h
+    JB invalid_char
+    CMP BL, 39h
+    JA invalid_char
+    
+    MOV valid_input, 1
+    
     XOR BH, BH
     IMUL CX
-    JO overflowError
+    JO input_overflow
     SUB BL, '0'
     ADD AX, BX
-    JO overflowError
-
+    JO input_overflow
+    
     INC SI
-    MOV BL, [SI]
-    JMP loopRead
+    MOV BL, byte ptr [SI]
+    JMP number_loop
 
-endOfLineReached:
-    CMP validInput, 0
-    JE emptyInputError
-    JMP calculateResult
+input_complete:
+    CMP valid_input, 0
+    JE empty_input
+    JMP evaluate_expression
 
-charError:
-    LEA DX, nonNumErrorMsg
+invalid_char:
+    LEA DX, error_non_numeric_msg
     MOV AH, 9
     INT 21h
-    MOV errorFlag, 1
-    JMP endProcedure
-
-emptyInputError:
-    LEA DX, errorEmptyMsg
+    MOV error_state, 1
+    JMP calc_end
+    
+empty_input:
+    LEA DX, error_empty_msg
     MOV AH, 9
     INT 21h
-    MOV errorFlag, 1
-    JMP endProcedure
+    MOV error_state, 1
+    JMP calc_end
 
-overflowError:
-    LEA DX, overflowMsg
+input_overflow:
+    LEA DX, error_overflow_msg
     MOV AH, 9
     INT 21h
-    MOV errorFlag, 1
-    JMP endProcedure
+    MOV error_state, 1
+    JMP calc_end
 
-calculateResult:
-    MOV inputValue, AX
+evaluate_expression:
+    MOV user_input, AX
     XOR DX, DX
-
-    CMP isValueNegative, 1
-    JE firstCaseNegative
+    CMP is_negative, 1
+    JE case_negative
     CMP AX, 0
-    JE firstCaseZero
+    JE case_zero
     CMP AX, 2
-    JL secondCase
+    JL case_second
     CMP AX, 4
-    JLE thirdCase
-    JMP fourthCase
-
-firstCaseNegative:
+    JLE case_third
+    JMP case_fourth
+    
+case_negative:
     SUB AX, 3
-    JO calcOverflowError
+    JO calc_overflow
     NEG AX
-    JMP saveResult
-
-firstCaseZero:
+    JMP store_result
+    
+case_zero:
     ADD AX, 3
-    JO calcOverflowError
-    JMP saveResult
-
-secondCase:
-    MOV tempResult, AX
-    ADD tempResult, 1
+    JO calc_overflow
+    JMP store_result
+    
+case_second:
+    MOV temp_result, AX
+    ADD temp_result, 1
+    
     MOV CX, AX
     MUL CX
     MOV CX, 4
     MUL CX
-    MOV CX, tempResult
+    
+    MOV CX, temp_result
     DIV CX
-    JMP saveResult
-
-thirdCase:
+    
+    JMP store_result
+    
+case_third:
     MOV CX, 2
     MUL CX
+    JO calc_overflow
     ADD AX, 5
-    MOV tempResult, AX
-    MOV AX, inputValue
+    JO calc_overflow
+    MOV temp_result, AX
+    
+    MOV AX, user_input
     MOV CX, AX
     MUL CX
+    JO calc_overflow
     SUB AX, 1
-    MOV CX, tempResult
+    JO calc_overflow
+    
+    MOV CX, temp_result
     DIV CX
-    JMP saveResult
-
-fourthCase:
+    
+    JMP store_result
+    
+case_fourth:
     MOV CX, AX
     MUL CX
+    JO calc_overflow
     ADD AX, 1
-    MOV tempResult, AX
-    MOV AX, inputValue
+    JO calc_overflow
+    MOV temp_result, AX
+    
+    MOV AX, user_input
     MOV CX, AX
     MUL CX
+    JO calc_overflow
     MUL CX
+    JO calc_overflow
     SUB AX, 1
-    MOV CX, tempResult
+    JO calc_overflow
+    
+    MOV CX, temp_result
     DIV CX
-    JMP saveResult
-
-calcOverflowError:
-    LEA DX, calcOverflowMsg
+    JO calc_overflow
+    
+    JMP store_result
+    
+calc_overflow:
+    LEA DX, error_calc_overflow_msg
     MOV AH, 9
     INT 21h
-    MOV errorFlag, 1
-    JMP endProcedure
-
-saveResult:
-    MOV remainder, DX
+    MOV error_state, 1
+    JMP calc_end
+    
+store_result:
+    MOV division_remainder, DX
     MOV result, AX
-
-endProcedure:
+    
+calc_end:
     XOR AX, AX
     XOR DX, DX
     RET
-inputProcedure ENDP
+execute_calculation ENDP
 
-outputProcedure PROC
-    MOV BX, printValue
+display_output PROC
+    MOV BX, display_value
     OR BX, BX
-    JNS positive2
-    MOV al, '-'
+    JNS positive_num
+    MOV AL, '-'
     INT 29h
-    NEG bx
+    NEG BX
 
-positive2:
+positive_num:
     MOV AX, BX
     XOR CX, CX
     MOV BX, 10
 
-toString:
+convert_to_string:
     XOR DX, DX
     DIV BX
     ADD DL, '0'
     PUSH DX
     INC CX
     TEST AX, AX
-    JNZ toString
-
-outputPrint:
+    JNZ convert_to_string
+    
+print_loop:
     POP AX
     INT 29h
-    LOOP outputPrint
+    LOOP print_loop
     RET
-outputProcedure ENDP
+display_output ENDP
 
-CSEG ENDS
-END MAIN
+CODE_SEG ENDS
+END PROGRAM_START
