@@ -1,0 +1,305 @@
+; STACK SEGMENT DESCRIPTION
+STACK_SEG SEGMENT PARA STACK "STACK"                    ; SEGMENT: Directive to define a segment named STACK_SEG; PARA: Aligns on paragraph (16-byte) boundary; STACK: Specifies segment type as stack; "STACK": Segment name
+    DB 64 DUP ("STACK")                                ; DB: Define Byte directive to reserve memory; 64: Number of bytes; DUP: Duplicates the string "STACK" 64 times to initialize 64 bytes; Creates stack space
+STACK_SEG ENDS                                         ; ENDS: Directive to mark the end of STACK_SEG segment definition
+
+; DATA SEGMENT DESCRIPTION
+DATA_SEG SEGMENT PARA PUBLIC "DATA"                    ; SEGMENT: Defines data segment named DATA_SEG; PARA: Paragraph alignment; PUBLIC: Allows access from other modules; "DATA": Segment name
+    result dw 0                                        ; DW: Define Word directive (2 bytes); result: Label for word variable; 0: Initializes to 0; Stores final calculation result
+    temp_result dw 0                                   ; DW: Define Word; temp_result: Label for temporary storage; 0: Initializes to 0; Used for intermediate calculations
+    user_input dw 0                                    ; DW: Define Word; user_input: Label for parsed input; 0: Initializes to 0; Stores user-provided number
+    division_remainder dw 0                            ; DW: Define Word; division_remainder: Label for remainder; 0: Initializes to 0; Stores remainder from division
+    display_value dw 0                                 ; DW: Define Word; display_value: Label for output value; 0: Initializes to 0; Holds value to display
+    
+    prompt_msg DB 0DH, 0AH, 'Enter value for X in equation:', 0Dh, 0Ah, '/ x+3, x<=0', 0Dh, 0Ah, '| 4x^2/(x+1), 0<x<2', 0Dh, 0Ah, '| (x^2-1)/(2x+5), 2<=x<=4', 0Dh, 0Ah, '\ (x^3-1)/(x^2+1), x>4', 0Dh, 0Ah, 'X: $' ; DB: Define Byte; prompt_msg: Label for string; 0DH, 0AH: Carriage return, line feed (new line); String: Prompt with equation cases; $: DOS string terminator
+    input_buffer DB 7, ?, 7 dup (0)                    ; DB: Define Byte; input_buffer: Label for input buffer; 7: Max length; ?: Placeholder for actual length; 7 dup (0): 7 bytes initialized to 0; Stores user input
+    result_msg DB 0DH, 0AH, "Output: $"                ; DB: Define Byte; result_msg: Label for string; 0DH, 0AH: New line; "Output: $": String with DOS terminator; Displays result prefix
+    remainder_msg DB 0DH, 0AH, "Division remainder: $" ; DB: Define Byte; remainder_msg: Label for string; 0DH, 0AH: New line; "Division remainder: $": String with DOS terminator; Displays remainder prefix
+    exit_prompt DB 0DH, 0AH, "Quit? (y/n): $"          ; DB: Define Byte; exit_prompt: Label for string; 0DH, 0AH: New line; "Quit? (y/n): $": String with DOS terminator; Prompts for exit
+    
+    error_empty_msg DB 0DH, 0AH, "!Error: Input is empty!$"              ; DB: Define Byte; error_empty_msg: Label for error string; 0DH, 0AH: New line; String with $: Empty input error message
+    error_non_numeric_msg DB 0DH, 0AH, "!Error: Invalid characters detected!$" ; DB: Define Byte; error_non_numeric_msg: Label; 0DH, 0AH: New line; String with $: Non-numeric input error
+    error_overflow_msg DB 0DH, 0AH, "!Error: Input value too large!$"     ; DB: Define Byte; error_overflow_msg: Label; 0DH, 0AH: New line; String with $: Input overflow error
+    error_calc_overflow_msg DB 0DH, 0AH, "!Error: Calculation overflow occurred!$" ; DB: Define Byte; error_calc_overflow_msg: Label; 0DH, 0AH: New line; String with $: Calculation overflow error
+    is_negative DB 0                                   ; DB: Define Byte; is_negative: Label for flag; 0: Initializes to 0 (false); Indicates if input is negative
+    valid_input DB 0                                   ; DB: Define Byte; valid_input: Label for flag; 0: Initializes to 0 (false); Indicates valid numeric input
+    error_state DB 0                                   ; DB: Define Byte; error_state: Label for flag; 0: Initializes to 0 (no error); Tracks error occurrence
+
+DATA_SEG ENDS                                          ; ENDS: Marks end of DATA_SEG segment definition
+
+; CODE SEGMENT DESCRIPTION
+CODE_SEG SEGMENT PARA PUBLIC "CODE"                    ; SEGMENT: Defines code segment named CODE_SEG; PARA: Paragraph alignment; PUBLIC: Accessible by other modules; "CODE": Segment name
+PROGRAM_START PROC FAR                                 ; PROC: Defines procedure PROGRAM_START; FAR: Uses segment:offset addressing for calls; Entry point of program
+    ASSUME CS:CODE_SEG, DS:DATA_SEG, SS:STACK_SEG      ; ASSUME: Informs assembler of segment register assignments; CS:CODE_SEG, DS:DATA_SEG, SS:STACK_SEG: Sets expected segments
+    PUSH DS                                            ; PUSH: Pushes DS register onto stack; Saves DS for return to DOS
+    XOR AX, AX                                         ; XOR: Exclusive OR; AX, AX: Sets AX to 0 (clears AX); Prepares for return address
+    PUSH AX                                            ; PUSH: Pushes AX (0) onto stack; Sets return offset to 0 for program exit
+    MOV AX, DATA_SEG                                   ; MOV: Moves data; AX, DATA_SEG: Loads address of DATA_SEG into AX; Prepares to set DS
+    MOV DS, AX                                         ; MOV: Moves data; DS, AX: Sets DS to DATA_SEG address; Points DS to data segment
+
+main_loop:                                             ; main_loop: Label for main program loop; Marks start of input-calculation-display cycle
+    CALL execute_calculation                           ; CALL: Calls procedure execute_calculation; Pushes return address, jumps to procedure; Gets input and computes result
+    
+    CMP error_state, 1                                 ; CMP: Compares; error_state, 1: Subtracts 1 from error_state, sets flags; Checks if error occurred
+    JE bypass_output                                   ; JE: Jumps if equal (ZF=1); bypass_output: Target label; Skips output on error
+    
+    LEA DX, result_msg                                 ; LEA: Load Effective Address; DX, result_msg: Loads address of result_msg into DX; Prepares to print result message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS interrupt; Prints string at DS:DX (result_msg)
+    
+    MOV AX, result                                     ; MOV: Moves data; AX, result: Loads result value into AX; Prepares result for display
+    MOV display_value, AX                              ; MOV: Moves data; display_value, AX: Stores AX in display_value; Sets value to display
+    CALL display_output                                ; CALL: Calls display_output procedure; Displays the result value
+    
+    CMP division_remainder, 0                          ; CMP: Compares; division_remainder, 0: Subtracts 0 from division_remainder, sets flags; Checks if remainder exists
+    JE bypass_output                                   ; JE: Jumps if equal (ZF=1); bypass_output: Target; Skips remainder display if 0
+    
+    LEA DX, remainder_msg                              ; LEA: Load Effective Address; DX, remainder_msg: Loads address of remainder_msg into DX; Prepares to print remainder message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints string at DS:DX (remainder_msg)
+    
+    MOV AX, division_remainder                         ; MOV: Moves data; AX, division_remainder: Loads remainder into AX; Prepares remainder for display
+    MOV display_value, AX                              ; MOV: Moves data; display_value, AX: Stores AX in display_value; Sets remainder to display
+    CALL display_output                                ; CALL: Calls display_output procedure; Displays the remainder value
+    
+bypass_output:                                         ; bypass_output: Label; Marks point to skip output display on error
+    MOV error_state, 0                                 ; MOV: Moves data; error_state, 0: Resets error_state to 0; Clears error flag
+
+prompt_exit:                                           ; prompt_exit: Label; Marks exit prompt section
+    LEA DX, exit_prompt                                ; LEA: Load Effective Address; DX, exit_prompt: Loads address of exit_prompt into DX; Prepares to print exit prompt
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints string at DS:DX (exit_prompt)
+    
+    MOV AH, 1                                          ; MOV: Moves data; AH, 1: Sets AH to 1; Specifies DOS function 1 (read character with echo)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Reads character into AL
+    
+    CMP AL, 'n'                                        ; CMP: Compares; AL, 'n': Subtracts ASCII 'n' from AL, sets flags; Checks if input is 'n' (continue)
+    JE main_loop                                       ; JE: Jumps if equal (ZF=1); main_loop: Target; Restarts main loop if 'n'
+    CMP AL, 'y'                                        ; CMP: Compares; AL, 'y': Subtracts ASCII 'y' from AL, sets flags; Checks if input is 'y' (exit)
+    JE terminate                                       ; JE: Jumps if equal (ZF=1); terminate: Target; Jumps to exit if 'y'
+    JMP prompt_exit                                    ; JMP: Unconditional jump; prompt_exit: Target; Loops back for valid input
+
+terminate:                                             ; terminate: Label; Marks program termination
+    MOV AH, 4Ch                                        ; MOV: Moves data; AH, 4Ch: Sets AH to 4Ch; Specifies DOS function 4Ch (terminate program)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Exits program to DOS
+
+PROGRAM_START ENDP                                     ; ENDP: Marks end of PROGRAM_START procedure; Closes procedure definition
+
+execute_calculation PROC                               ; PROC: Defines execute_calculation procedure; Handles input parsing and calculation
+    LEA DX, prompt_msg                                 ; LEA: Load Effective Address; DX, prompt_msg: Loads address of prompt_msg into DX; Prepares to print prompt
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints string at DS:DX (prompt_msg)
+    
+    LEA DX, input_buffer                               ; LEA: Load Effective Address; DX, input_buffer: Loads address of input_buffer into DX; Prepares for input
+    MOV AH, 10                                         ; MOV: Moves data; AH, 10: Sets AH to 10; Specifies DOS function 10 (buffered input)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Reads input into buffer at DS:DX
+
+    LEA SI, input_buffer + 2                           ; LEA: Load Effective Address; SI, input_buffer + 2: Loads address of input data (skips max length, actual length) into SI; Points to first character
+    XOR BX, BX                                         ; XOR: Exclusive OR; BX, BX: Sets BX to 0; Clears BX for use
+    MOV BL, byte ptr [SI]                              ; MOV: Moves data; BL, byte ptr [SI]: Loads byte at DS:SI into BL; Gets first input character
+    
+    CMP BL, '-'                                        ; CMP: Compares; BL, '-': Subtracts ASCII '-' from BL, sets flags; Checks if first character is negative sign
+    JE parse_negative                                  ; JE: Jumps if equal (ZF=1); parse_negative: Target; Handles negative number
+    CMP BL, '+'                                        ; CMP: Compares; BL, '+': Subtracts ASCII '+' from BL, sets flags; Checks if first character is positive sign
+    JE parse_positive                                  ; JE: Jumps if equal (ZF=1); parse_positive: Target; Handles positive number
+    
+    MOV is_negative, 0                                 ; MOV: Moves data; is_negative, 0: Sets is_negative to 0; Assumes positive number
+    JMP parse_number                                   ; JMP: Unconditional jump; parse_number: Target; Proceeds to parse digits
+
+parse_positive:                                        ; parse_positive: Label; Handles explicit positive sign
+    MOV is_negative, 0                                 ; MOV: Moves data; is_negative, 0: Sets is_negative to 0; Confirms positive number
+    INC SI                                             ; INC: Increments; SI: Advances SI to next character; Skips '+' sign
+    MOV BL, byte ptr [SI]                              ; MOV: Moves data; BL, byte ptr [SI]: Loads next character into BL; Gets first digit
+    JMP parse_number                                   ; JMP: Unconditional jump; parse_number: Target; Proceeds to parse digits
+    
+parse_negative:                                        ; parse_negative: Label; Handles negative sign
+    MOV is_negative, 1                                 ; MOV: Moves data; is_negative, 1: Sets is_negative to 1; Marks number as negative
+    INC SI                                             ; INC: Increments; SI: Advances SI to next character; Skips '-' sign
+    MOV BL, byte ptr [SI]                              ; MOV: Moves data; BL, byte ptr [SI]: Loads next character into BL; Gets first digit
+    JMP parse_number                                   ; JMP: Unconditional jump; parse_number: Target; Proceeds to parse digits
+
+parse_number:                                          ; parse_number: Label; Parses numeric digits
+    MOV valid_input, 0                                 ; MOV: Moves data; valid_input, 0: Resets valid_input to 0; Assumes no valid digits yet
+    MOV CX, 10                                         ; MOV: Moves data; CX, 10: Sets CX to 10; Prepares for decimal multiplication
+    XOR AX, AX                                         ; XOR: Exclusive OR; AX, AX: Sets AX to 0; Clears AX for number accumulation
+    
+number_loop:                                           ; number_loop: Label; Loop to process each digit
+    CMP BL, 0Dh                                        ; CMP: Compares; BL, 0Dh: Subtracts carriage return (ASCII 13) from BL, sets flags; Checks for end of input
+    JE input_complete                                  ; JE: Jumps if equal (ZF=1); input_complete: Target; Exits loop if input ends
+    
+    CMP BL, 30h                                        ; CMP: Compares; BL, 30h: Subtracts ASCII '0' from BL, sets flags; Checks if character is below '0'
+    JB invalid_char                                    ; JB: Jumps if below (CF=1); invalid_char: Target; Handles non-digit
+    CMP BL, 39h                                        ; CMP: Compares; BL, 39h: Subtracts ASCII '9' from BL, sets flags; Checks if character is above '9'
+    JA invalid_char                                    ; JA: Jumps if above (CF=0, ZF=0); invalid_char: Target; Handles non-digit
+    
+    MOV valid_input, 1                                 ; MOV: Moves data; valid_input, 1: Sets valid_input to 1; Marks input as valid
+    
+    XOR BH, BH                                         ; XOR: Exclusive OR; BH, BH: Sets BH to 0; Ensures BX is 16-bit for addition
+    IMUL CX                                            ; IMUL: Signed multiply; CX: Multiplies AX by 10; Shifts digits left in decimal
+    JO input_overflow                                  ; JO: Jumps if overflow (OF=1); input_overflow: Target; Handles overflow
+    SUB BL, '0'                                        ; SUB: Subtracts; BL, '0': Converts ASCII digit to numeric value (e.g., '5' - '0' = 5)
+    ADD AX, BX                                         ; ADD: Adds; AX, BX: Adds digit to accumulated number; Builds number
+    JO input_overflow                                  ; JO: Jumps if overflow (OF=1); input_overflow: Target; Handles overflow
+    
+    INC SI                                             ; INC: Increments; SI: Advances to next character; Points to next digit
+    MOV BL, byte ptr [SI]                              ; MOV: Moves data; BL, byte ptr [SI]: Loads next character into BL; Gets next digit
+    JMP number_loop                                    ; JMP: Unconditional jump; number_loop: Target; Repeats for next digit
+
+input_complete:                                        ; input_complete: Label; Handles end of input
+    CMP valid_input, 0                                 ; CMP: Compares; valid_input, 0: Subtracts 0 from valid_input, sets flags; Checks if any digits were valid
+    JE empty_input                                     ; JE: Jumps if equal (ZF=1); empty_input: Target; Handles empty input
+    JMP evaluate_expression                            ; JMP: Unconditional jump; evaluate_expression: Target; Proceeds to compute result
+
+invalid_char:                                          ; invalid_char: Label; Handles non-numeric input
+    LEA DX, error_non_numeric_msg                      ; LEA: Load Effective Address; DX, error_non_numeric_msg: Loads error message address into DX; Prepares error message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints error message
+    MOV error_state, 1                                 ; MOV: Moves data; error_state, 1: Sets error_state to 1; Marks error
+    JMP calc_end                                       ; JMP: Unconditional jump; calc_end: Target; Exits procedure
+    
+empty_input:                                           ; empty_input: Label; Handles empty input
+    LEA DX, error_empty_msg                            ; LEA: Load Effective Address; DX, error_empty_msg: Loads error message address into DX; Prepares error message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints error message
+    MOV error_state, 1                                 ; MOV: Moves data; error_state, 1: Sets error_state to 1; Marks error
+    JMP calc_end                                       ; JMP: Unconditional jump; calc_end: Target; Exits procedure
+
+input_overflow:                                        ; input_overflow: Label; Handles input overflow
+    LEA DX, error_overflow_msg                         ; LEA: Load Effective Address; DX, error_overflow_msg: Loads error message address into DX; Prepares error message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints error message
+    MOV error_state, 1                                 ; MOV: Moves data; error_state, 1: Sets error_state to 1; Marks error
+    JMP calc_end                                       ; JMP: Unconditional jump; calc_end: Target; Exits procedure
+
+evaluate_expression:                                   ; evaluate_expression: Label; Selects equation based on input
+    MOV user_input, AX                                 ; MOV: Moves data; user_input, AX: Stores parsed number in user_input; Saves input
+    XOR DX, DX                                         ; XOR: Exclusive OR; DX, DX: Sets DX to 0; Clears DX for division remainders
+    CMP is_negative, 1                                 ; CMP: Compares; is_negative, 1: Subtracts 1 from is_negative, sets flags; Checks if number is negative
+    JE case_negative                                   ; JE: Jumps if equal (ZF=1); case_negative: Target; Handles x <= 0
+    CMP AX, 0                                          ; CMP: Compares; AX, 0: Subtracts 0 from AX, sets flags; Checks if x = 0
+    JE case_zero                                       ; JE: Jumps if equal (ZF=1); case_zero: Target; Handles x = 0
+    CMP AX, 2                                          ; CMP: Compares; AX, 2: Subtracts 2 from AX, sets flags; Checks if x < 2
+    JL case_second                                     ; JL: Jumps if less (SF≠OF); case_second: Target; Handles 0 < x < 2
+    CMP AX, 4                                          ; CMP: Compares; AX, 4: Subtracts 4 from AX, sets flags; Checks if x <= 4
+    JLE case_third                                     ; JLE: Jumps if less or equal (ZF=1 or SF≠OF); case_third: Target; Handles 2 <= x <= 4
+    JMP case_fourth                                    ; JMP: Unconditional jump; case_fourth: Target; Handles x > 4
+    
+case_negative:                                         ; case_negative: Label; Computes x + 3 (negated) for x <= 0
+    SUB AX, 3                                          ; SUB: Subtracts; AX, 3: Subtracts 3 from AX; Computes x - 3
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    NEG AX                                             ; NEG: Negates; AX: Inverts sign of AX; Negates result for negative input
+    JMP store_result                                   ; JMP: Unconditional jump; store_result: Target; Stores result
+    
+case_zero:                                             ; case_zero: Label; Computes x + 3 for x = 0
+    ADD AX, 3                                          ; ADD: Adds; AX, 3: Adds 3 to AX; Computes x + 3
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    JMP store_result                                   ; JMP: Unconditional jump; store_result: Target; Stores result
+    
+case_second:                                           ; case_second: Label; Computes 4x^2 / (x + 1) for 0 < x < 2
+    MOV temp_result, AX                                ; MOV: Moves data; temp_result, AX: Saves x to temp_result; Stores x
+    ADD temp_result, 1                                 ; ADD: Adds; temp_result, 1: Adds 1 to temp_result; Computes x + 1
+    
+    MOV CX, AX                                         ; MOV: Moves data; CX, AX: Loads x into CX; Prepares for multiplication
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by CX, result in DX:AX; Computes x^2
+    MOV CX, 4                                          ; MOV: Moves data; CX, 4: Sets CX to 4; Prepares to multiply by 4
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by 4, result in DX:AX; Computes 4x^2
+    
+    MOV CX, temp_result                                ; MOV: Moves data; CX, temp_result: Loads x + 1 into CX; Prepares for division
+    DIV CX                                             ; DIV: Unsigned divide; CX: Divides DX:AX by CX, quotient in AX, remainder in DX; Computes 4x^2 / (x + 1)
+    
+    JMP store_result                                   ; JMP: Unconditional jump; store_result: Target; Stores result
+    
+case_third:                                            ; case_third: Label; Computes (x^2 - 1) / (2x + 5) for 2 <= x <= 4
+    MOV CX, 2                                          ; MOV: Moves data; CX, 2: Sets CX to 2; Prepares to compute 2x
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by 2, result in DX:AX; Computes 2x
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    ADD AX, 5                                          ; ADD: Adds; AX, 5: Adds 5 to AX; Computes 2x + 5
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    MOV temp_result, AX                                ; MOV: Moves data; temp_result, AX: Saves 2x + 5 to temp_result; Stores denominator
+    
+    MOV AX, user_input                                 ; MOV: Moves data; AX, user_input: Reloads x into AX; Prepares to compute numerator
+    MOV CX, AX                                         ; MOV: Moves data; CX, AX: Loads x into CX; Prepares for multiplication
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by CX, result in DX:AX; Computes x^2
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    SUB AX, 1                                          ; SUB: Subtracts; AX, 1: Subtracts 1 from AX; Computes x^2 - 1
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    
+    MOV CX, temp_result                                ; MOV: Moves data; CX, temp_result: Loads 2x + 5 into CX; Prepares for division
+    DIV CX                                             ; DIV: Unsigned divide; CX: Divides DX:AX by CX, quotient in AX, remainder in DX; Computes (x^2 - 1) / (2x + 5)
+    
+    JMP store_result                                   ; JMP: Unconditional jump; store_result: Target; Stores result
+    
+case_fourth:                                           ; case_fourth: Label; Computes (x^3 - 1) / (x^2 + 1) for x > 4
+    MOV CX, AX                                         ; MOV: Moves data; CX, AX: Loads x into CX; Prepares to compute x^2
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by CX, result in DX:AX; Computes x^2
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    ADD AX, 1                                          ; ADD: Adds; AX, 1: Adds 1 to AX; Computes x^2 + 1
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    MOV temp_result, AX                                ; MOV: Moves data; temp_result, AX: Saves x^2 + 1 to temp_result; Stores denominator
+    
+    MOV AX, user_input                                 ; MOV: Moves data; AX, user_input: Reloads x into AX; Prepares to compute numerator
+    MOV CX, AX                                         ; MOV: Moves data; CX, AX: Loads x into CX; Prepares for multiplication
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by CX, result in DX:AX; Computes x^2
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    MUL CX                                             ; MUL: Unsigned multiply; CX: Multiplies AX by CX, result in DX:AX; Computes x^3
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    SUB AX, 1                                          ; SUB: Subtracts; AX, 1: Subtracts 1 from AX; Computes x^3 - 1
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    
+    MOV CX, temp_result                                ; MOV: Moves data; CX, temp_result: Loads x^2 + 1 into CX; Prepares for division
+    DIV CX                                             ; DIV: Unsigned divide; CX: Divides DX:AX by CX, quotient in AX, remainder in DX; Computes (x^3 - 1) / (x^2 + 1)
+    JO calc_overflow                                   ; JO: Jumps if overflow (OF=1); calc_overflow: Target; Handles overflow
+    
+    JMP store_result                                   ; JMP: Unconditional jump; store_result: Target; Stores result
+    
+calc_overflow:                                         ; calc_overflow: Label; Handles calculation overflow
+    LEA DX, error_calc_overflow_msg                    ; LEA: Load Effective Address; DX, error_calc_overflow_msg: Loads error message address into DX; Prepares error message
+    MOV AH, 9                                          ; MOV: Moves data; AH, 9: Sets AH to 9; Specifies DOS function 9 (print string)
+    INT 21h                                            ; INT: Software interrupt; 21h: Calls DOS; Prints error message
+    MOV error_state, 1                                 ; MOV: Moves data; error_state, 1: Sets error_state to 1; Marks error
+    JMP calc_end                                       ; JMP: Unconditional jump; calc_end: Target; Exits procedure
+    
+store_result:                                          ; store_result: Label; Stores calculation result
+    MOV division_remainder, DX                         ; MOV: Moves data; division_remainder, DX: Stores remainder from DX; Saves division remainder
+    MOV result, AX                                     ; MOV: Moves data; result, AX: Stores quotient from AX; Saves calculation result
+    
+calc_end:                                              ; calc_end: Label; Marks end of calculation procedure
+    XOR AX, AX                                         ; XOR: Exclusive OR; AX, AX: Sets AX to 0; Clears AX for return
+    XOR DX, DX                                         ; XOR: Exclusive OR; DX, DX: Sets DX to 0; Clears DX for return
+    RET                                                ; RET: Returns from procedure; Pops return address and jumps; Exits procedure
+
+execute_calculation ENDP                               ; ENDP: Marks end of execute_calculation procedure; Closes procedure definition
+
+display_output PROC                                    ; PROC: Defines display_output procedure; Converts number to string and displays
+    MOV BX, display_value                              ; MOV: Moves data; BX, display_value: Loads value to display into BX; Prepares for output
+    OR BX, BX                                          ; OR: Logical OR; BX, BX: Sets flags based on BX; Checks if value is negative (SF=1 if negative)
+    JNS positive_num                                   ; JNS: Jumps if not sign (SF=0); positive_num: Target; Skips negative sign if positive
+    MOV AL, '-'                                        ; MOV: Moves data; AL, '-': Loads ASCII '-' into AL; Prepares to print negative sign
+    INT 29h                                            ; INT: Software interrupt; 29h: Calls fast console output; Prints character in AL ('-')
+    NEG BX                                             ; NEG: Negates; BX: Inverts sign of BX; Makes number positive for display
+
+positive_num:                                          ; positive_num: Label; Handles positive number display
+    MOV AX, BX                                         ; MOV: Moves data; AX, BX: Loads value into AX; Prepares for conversion
+    XOR CX, CX                                         ; XOR: Exclusive OR; CX, CX: Sets CX to 0; Clears digit counter
+    MOV BX, 10                                         ; MOV: Moves data; BX, 10: Sets BX to 10; Prepares for decimal division
+
+convert_to_string:                                     ; convert_to_string: Label; Converts number to ASCII digits
+    XOR DX, DX                                         ; XOR: Exclusive OR; DX, DX: Sets DX to 0; Clears DX for division
+    DIV BX                                             ; DIV: Unsigned divide; BX: Divides DX:AX by 10, quotient in AX, remainder in DX; Gets next digit
+    ADD DL, '0'                                        ; ADD: Adds; DL, '0': Converts remainder to ASCII (e.g., 5 + '0' = '5')
+    PUSH DX                                            ; PUSH: Pushes DX onto stack; Saves ASCII digit
+    INC CX                                             ; INC: Increments; CX: Increments digit counter; Tracks number of digits
+    TEST AX, AX                                        ; TEST: Logical AND; AX, AX: Sets flags based on AX; Checks if quotient is 0
+    JNZ convert_to_string                              ; JNZ: Jumps if not zero (ZF=0); convert_to_string: Target; Continues if more digits
+    
+print_loop:                                            ; print_loop: Label; Prints digits in reverse order
+    POP AX                                             ; POP: Pops stack into AX; Retrieves ASCII digit
+    INT 29h                                            ; INT: Software interrupt; 29h: Calls fast console output; Prints character in AL
+    LOOP print_loop                                    ; LOOP: Decrements CX, jumps if CX ≠ 0; print_loop: Target; Repeats until all digits printed
+    RET                                                ; RET: Returns from procedure; Pops return address and jumps; Exits procedure
+
+display_output ENDP                                    ; ENDP: Marks end of display_output procedure; Closes procedure definition
+
+CODE_SEG ENDS                                          ; ENDS: Marks end of CODE_SEG segment definition
+END PROGRAM_START                                      ; END: Marks end of program; PROGRAM_START: Specifies entry point; Informs assembler where execution begins
+

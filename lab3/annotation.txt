@@ -1,0 +1,95 @@
+Explanation of Instructions and Symbols
+Each instruction or special symbol is explained below, focusing on its role in the 8086 assembly language and DOS environment:
+
+Directives:
+    SEGMENT: Defines a segment (code, data, or stack) with attributes like alignment (PARA for 16-byte) and access (PUBLIC for external access).
+
+    ENDS: Closes a segment definition.
+        
+    DB: Defines byte-sized data (e.g., strings, flags, or buffers).
+
+    DW: Defines word-sized data (2 bytes, e.g., variables like result).
+
+    DUP: Duplicates a value or string a specified number of times (e.g., 64 DUP ("STACK")).
+
+    PROC: Defines a procedure with a call model (FAR for segment:offset addressing).
+
+    ENDP: Closes a procedure definition.
+
+    END: Marks the end of the program and specifies the entry point.
+
+    ASSUME: Informs the assembler which segment registers point to which segments.
+
+Instructions:
+    MOV dest, src: Moves data from source to destination (e.g., MOV AX, DATA_SEG loads segment address).
+
+    PUSH src: Pushes source value onto the stack (e.g., PUSH DS saves DS).
+
+    POP dest: Pops stack value into destination (e.g., POP AX retrieves a digit).
+
+    XOR dest, src: Performs exclusive OR, often used to clear registers (e.g., XOR AX, AX sets AX to 0).
+
+    LEA dest, src: Loads effective address of source into destination (e.g., LEA DX, prompt_msg loads string address).
+
+    CMP dest, src: Compares by subtracting source from destination, setting flags (e.g., CMP BL, '-' checks for negative sign).
+
+    JE label: Jumps if equal (ZF=1) to label (e.g., JE parse_negative for '-' sign).
+
+    JB label: Jumps if below (CF=1) for unsigned comparisons (e.g., JB invalid_char for non-digit).
+
+    JA label: Jumps if above (CF=0, ZF=0) for unsigned comparisons (e.g., JA invalid_char for non-digit).
+
+    JL label: Jumps if less (SF≠OF) for signed comparisons (e.g., JL case_second for x < 2).
+
+    JLE label: Jumps if less or equal (ZF=1 or SF≠OF) for signed comparisons (e.g., JLE case_third for x <= 4).
+
+    JNS label: Jumps if not sign (SF=0) for positive numbers (e.g., JNS positive_num).
+
+    JNZ label: Jumps if not zero (ZF=0) (e.g., JNZ convert_to_string for more digits).
+
+    JO label: Jumps if overflow (OF=1) (e.g., JO input_overflow for parsing overflow).
+
+    JMP label: Unconditional jump to label (e.g., JMP main_loop restarts loop).
+
+    CALL proc: Calls a procedure, pushing return address (e.g., CALL execute_calculation).
+
+    RET: Returns from procedure by popping return address (e.g., RET exits display_output).
+
+    INT num: Calls software interrupt (e.g., INT 21h for DOS functions, INT 29h for fast console output).
+
+    ADD dest, src: Adds source to destination (e.g., ADD AX, 3 computes x + 3).
+
+    SUB dest, src: Subtracts source from destination (e.g., SUB BL, '0' converts ASCII to numeric).
+
+    MUL src: Unsigned multiply of AX by source, result in DX:AX (e.g., MUL CX for x^2).
+
+    IMUL src: Signed multiply of AX by source, result in DX:AX (e.g., IMUL CX for decimal parsing).
+
+    DIV src: Unsigned divide of DX:AX by source, quotient in AX, remainder in DX (e.g., DIV CX for division).
+    
+    NEG dest: Negates destination (e.g., NEG AX inverts sign).
+
+    INC dest: Increments destination (e.g., INC SI advances to next character).
+
+    OR dest, src: Logical OR, sets flags (e.g., OR BX, BX checks sign).
+
+    TEST dest, src: Logical AND, sets flags (e.g., TEST AX, AX checks if quotient is 0).
+
+    LOOP label: Decrements CX, jumps if CX ≠ 0 (e.g., LOOP print_loop prints digits).
+
+Special Symbols:
+    ;: Starts a comment, ignored by assembler (e.g., ; STACK SEGMENT DESCRIPTION).
+
+    $: Terminates DOS strings for function 9 (e.g., "Output: $").
+
+    0DH, 0AH: ASCII carriage return (13) and line feed (10) for new lines.
+
+    'char': ASCII character literal (e.g., '0' for ASCII 48).
+
+    byte ptr: Specifies byte-sized memory access (e.g., byte ptr [SI] for input character).
+
+    +, -: Offset operators (e.g., input_buffer + 2 skips buffer header).
+
+    :: Separates segment and offset or defines labels (e.g., main_loop:).
+    
+    h: Hexadecimal suffix (e.g., 30h for ASCII '0').
